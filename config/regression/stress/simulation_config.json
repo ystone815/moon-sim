@@ -1,0 +1,18 @@
+{
+  "simulation": {
+    "delay_lines": {
+      "delay_ns": 50,
+      "debug_enable": false
+    },
+    "memory": {
+      "size": 256,
+      "debug_enable": false
+    }
+  },
+  "logging": {
+    "enable_file_logging": true,
+    "performance_metrics": true
+  },
+  "description": "Stress test: High latency, resource pressure",
+  "version": "1.0"
+}

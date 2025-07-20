@@ -1,0 +1,15 @@
+{
+  "traffic_generator": {
+    "num_transactions": 1000000,
+    "interval_ns": 1,
+    "locality_percentage": 100,
+    "write_percentage": 100,
+    "databyte_value": 64,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 64
+  },
+  "description": "High-performance test: 1M transactions, 1ns interval",
+  "version": "1.0"
+}

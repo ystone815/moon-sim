@@ -1,0 +1,18 @@
+{
+  "simulation": {
+    "delay_lines": {
+      "delay_ns": 10,
+      "debug_enable": true
+    },
+    "memory": {
+      "size": 256,
+      "debug_enable": true
+    }
+  },
+  "logging": {
+    "enable_file_logging": true,
+    "performance_metrics": true
+  },
+  "description": "Validation test: Full debug, moderate settings",
+  "version": "1.0"
+}

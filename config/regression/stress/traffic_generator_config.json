@@ -1,0 +1,15 @@
+{
+  "traffic_generator": {
+    "num_transactions": 500000,
+    "interval_ns": 1,
+    "locality_percentage": 0,
+    "write_percentage": 50,
+    "databyte_value": 128,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 1
+  },
+  "description": "Stress test: Random access, mixed R/W, small increment",
+  "version": "1.0"
+}
