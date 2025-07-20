@@ -23,11 +23,12 @@ SC_MODULE(TrafficGenerator) {
     const bool m_do_writes;
     const unsigned char m_databyte_value;
     const unsigned int m_num_transactions;
+    const bool m_debug_enable;
 
     void run();
 
     // Updated constructor with new parameter
-    TrafficGenerator(sc_module_name name, sc_time interval, LocalityType locality, bool do_reads, bool do_writes, unsigned char databyte_value, unsigned int num_transactions);
+    TrafficGenerator(sc_module_name name, sc_time interval, LocalityType locality, bool do_reads, bool do_writes, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable = false);
 
 private:
     unsigned int m_current_address; // For sequential access

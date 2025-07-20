@@ -15,8 +15,9 @@ class BasePacket {
 public:
     virtual ~BasePacket() = default; // Virtual destructor for proper cleanup
 
-    // Pure virtual function for dynamic attribute access
+    // Pure virtual functions for dynamic attribute access
     virtual double get_attribute(const std::string& attribute_name) const = 0;
+    virtual void set_attribute(const std::string& attribute_name, double value) = 0;
 
     // Virtual operator<< for polymorphic printing
     virtual void print(std::ostream& os) const = 0;

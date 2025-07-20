@@ -8,7 +8,7 @@ OBJ_DIR=obj
 
 # Define source files in their new locations
 SRCS_MAIN = src/main.cpp
-SRCS_BASE = src/base/delay_line.cpp src/base/memory.cpp src/base/delay_line_databyte.cpp src/base/traffic_generator.cpp
+SRCS_BASE = src/base/traffic_generator.cpp
 SRCS_HOST_SYSTEM =
 
 # Define object files based on source files and their new locations
@@ -20,8 +20,10 @@ OBJS = $(OBJS_MAIN) $(OBJS_BASE) $(OBJS_HOST_SYSTEM)
 
 all: $(EXE)
 
+
 $(EXE): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
+
 
 # Rule for main.cpp
 $(OBJ_DIR)/%.o: src/%.cpp

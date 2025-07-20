@@ -1,0 +1,33 @@
+{
+  "simulation": {
+    "num_transactions": 100000,
+    "traffic_generator": {
+      "interval_ns": 10,
+      "locality_type": "RANDOM",
+      "do_reads": true,
+      "do_writes": true,
+      "databyte_value": 64,
+      "debug_enable": false
+    },
+    "delay_lines": {
+      "count": 5,
+      "delay_ns": 10,
+      "debug_enable": false
+    },
+    "memory": {
+      "size": 256,
+      "debug_enable": false
+    },
+    "index_allocator": {
+      "policy": "SEQUENTIAL",
+      "max_index": 1024,
+      "enable_reuse": true,
+      "debug_enable": false
+    }
+  },
+  "logging": {
+    "enable_file_logging": true,
+    "log_directory": "log",
+    "performance_metrics": true
+  }
+}

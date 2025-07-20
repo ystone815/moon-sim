@@ -13,6 +13,7 @@ struct GenericPacket : public BasePacket {
     int address;
     int data;
     unsigned char databyte;
+    int index; // Packet index for tracking
 
     // Implementation of virtual get_attribute from BasePacket
     double get_attribute(const std::string& attribute_name) const override {
@@ -22,6 +23,8 @@ struct GenericPacket : public BasePacket {
             return static_cast<double>(data);
         } else if (attribute_name == "address") {
             return static_cast<double>(address);
+        } else if (attribute_name == "index") {
+            return static_cast<double>(index);
         } else {
             SOC_SIM_WARNING("GenericPacket", soc_sim::error::codes::INVALID_ATTRIBUTE,
                            "Unknown attribute name: " + attribute_name + ". Returning 0.0.");
@@ -34,7 +37,8 @@ struct GenericPacket : public BasePacket {
         os << "cmd: " << (command == Command::READ ? "READ" : "WRITE")
            << ", addr: " << std::hex << address
            << ", data: " << std::dec << data
-           << ", databyte: " << (int)databyte;
+           << ", databyte: " << (int)databyte
+           << ", index: " << index;
     }
 
     // Implementation of virtual sc_trace_impl from BasePacket
@@ -44,6 +48,7 @@ struct GenericPacket : public BasePacket {
         sc_trace(tf, address, name + ".address");
         sc_trace(tf, data, name + ".data");
         sc_trace(tf, databyte, name + ".databyte");
+        sc_trace(tf, index, name + ".index");
     }
 
     // Implementation of memory operation methods
@@ -53,6 +58,22 @@ struct GenericPacket : public BasePacket {
     unsigned char get_databyte() const override { return databyte; }
     void set_data(int new_data) override { data = new_data; }
     void set_databyte(unsigned char new_databyte) override { databyte = new_databyte; }
+
+    // Implementation of virtual set_attribute from BasePacket
+    void set_attribute(const std::string& attribute_name, double value) override {
+        if (attribute_name == "databyte") {
+            databyte = static_cast<unsigned char>(value);
+        } else if (attribute_name == "data") {
+            data = static_cast<int>(value);
+        } else if (attribute_name == "address") {
+            address = static_cast<int>(value);
+        } else if (attribute_name == "index") {
+            index = static_cast<int>(value);
+        } else {
+            SOC_SIM_WARNING("GenericPacket", soc_sim::error::codes::INVALID_ATTRIBUTE,
+                           "Unknown attribute name: " + attribute_name + ". Ignoring set operation.");
+        }
+    }
 };
 
 #endif
