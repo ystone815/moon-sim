@@ -20,11 +20,14 @@ int sc_main(int argc, char* argv[]) {
     // Extract configuration values
     int num_transactions = config.get_int("num_transactions", 100000);
     int interval_ns = config.get_int("interval_ns", 10);
-    std::string locality_type = config.get_string("locality_type", "RANDOM");
+    int locality_percentage = config.get_int("locality_percentage", 0);
     bool do_reads = config.get_bool("do_reads", true);
     bool do_writes = config.get_bool("do_writes", true);
     int databyte_value = config.get_int("databyte_value", 64);
     bool tg_debug = config.get_bool("traffic_generator.debug_enable", false);
+    int start_address = config.get_int("start_address", 0);
+    int end_address = config.get_int("end_address", 0xFF);
+    int address_increment = config.get_int("address_increment", 0x10);
     
     int delay_ns = config.get_int("delay_ns", 10);
     bool dl_debug = config.get_bool("delay_lines.debug_enable", false);
@@ -48,23 +51,23 @@ int sc_main(int argc, char* argv[]) {
         std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
     }
 
-    // Convert locality type string to enum
-    LocalityType locality = (locality_type == "SEQUENTIAL") ? LocalityType::SEQUENTIAL : LocalityType::RANDOM;
-    
     TrafficGenerator traffic_generator("traffic_generator", 
                                      sc_time(interval_ns, SC_NS), 
-                                     locality, 
+                                     static_cast<unsigned int>(locality_percentage), 
                                      do_reads, 
                                      do_writes, 
                                      static_cast<unsigned char>(databyte_value), 
                                      num_transactions, 
-                                     tg_debug);
+                                     tg_debug,
+                                     static_cast<unsigned int>(start_address),
+                                     static_cast<unsigned int>(end_address),
+                                     static_cast<unsigned int>(address_increment));
     DelayLine<BasePacket> delay_line1("delay_line1", sc_time(delay_ns, SC_NS), dl_debug);
     DelayLine<BasePacket> delay_line2("delay_line2", sc_time(delay_ns, SC_NS), dl_debug);
     DelayLine<BasePacket> delay_line3("delay_line3", sc_time(delay_ns, SC_NS), dl_debug);
     DelayLine<BasePacket> delay_line4("delay_line4", sc_time(delay_ns, SC_NS), dl_debug);
     DelayLine<BasePacket> delay_line5("delay_line5", sc_time(delay_ns, SC_NS), dl_debug);
-    Memory<BasePacket> memory("memory", mem_debug);
+    Memory<BasePacket, int, 65536> memory("memory", mem_debug);
 
     sc_fifo<std::shared_ptr<BasePacket>> fifo_tg_dl1(2);
     sc_fifo<std::shared_ptr<BasePacket>> fifo_dl1_dl2(2);

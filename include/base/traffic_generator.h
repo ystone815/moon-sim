@@ -7,10 +7,8 @@
 #include <memory> // For smart pointers
 #include <random> // For C++11 random library
 
-enum class LocalityType {
-    RANDOM,
-    SEQUENTIAL
-};
+// Locality is now controlled by percentage (0-100)
+// 0 = full random, 100 = full sequential
 
 SC_MODULE(TrafficGenerator) {
     SC_HAS_PROCESS(TrafficGenerator);
@@ -18,17 +16,20 @@ SC_MODULE(TrafficGenerator) {
 
     // New member variables for options
     const sc_time m_interval;
-    const LocalityType m_locality_type;
+    const unsigned int m_locality_percentage; // 0-100: 0=random, 100=sequential
     const bool m_do_reads;
     const bool m_do_writes;
     const unsigned char m_databyte_value;
     const unsigned int m_num_transactions;
     const bool m_debug_enable;
+    const unsigned int m_start_address;
+    const unsigned int m_end_address;
+    const unsigned int m_address_increment;
 
     void run();
 
     // Updated constructor with new parameter
-    TrafficGenerator(sc_module_name name, sc_time interval, LocalityType locality, bool do_reads, bool do_writes, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable = false);
+    TrafficGenerator(sc_module_name name, sc_time interval, unsigned int locality_percentage, bool do_reads, bool do_writes, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable = false, unsigned int start_address = 0, unsigned int end_address = 0xFF, unsigned int address_increment = 0x10);
 
 private:
     unsigned int m_current_address; // For sequential access
@@ -36,6 +37,7 @@ private:
     std::uniform_int_distribution<int> m_address_dist; // Address distribution
     std::uniform_int_distribution<int> m_data_dist; // Data distribution
     std::bernoulli_distribution m_command_dist; // Command distribution
+    std::uniform_int_distribution<int> m_locality_dist; // For locality percentage (0-99)
 };
 
 #endif
