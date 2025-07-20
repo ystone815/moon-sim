@@ -22,8 +22,9 @@ template<typename PacketType, typename DataType = int, size_t MemorySize = 256>
 SC_MODULE(Memory) {
     SC_HAS_PROCESS(Memory);
     
-    // Template-based SystemC port
+    // Template-based SystemC ports
     sc_fifo_in<std::shared_ptr<PacketType>> in;
+    sc_fifo_out<std::shared_ptr<PacketType>> release_out; // For sending processed packets back to IndexAllocator
 
     // Memory configuration
     static constexpr size_t MEMORY_SIZE = MemorySize;
@@ -98,6 +99,9 @@ SC_MODULE(Memory) {
                 SOC_SIM_ERROR("Memory", soc_sim::error::codes::INVALID_PACKET_TYPE,
                              "Unknown command: " + std::to_string(command));
             }
+            
+            // Send processed packet to release path for index deallocation
+            release_out.write(packet);
         }
     }
 

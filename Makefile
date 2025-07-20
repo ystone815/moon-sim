@@ -9,7 +9,7 @@ OBJ_DIR=obj
 # Define source files in their new locations
 SRCS_MAIN = src/main.cpp
 SRCS_BASE = src/base/traffic_generator.cpp
-SRCS_HOST_SYSTEM =
+SRCS_HOST_SYSTEM = src/host_system/host_system.cpp
 
 # Define object files based on source files and their new locations
 OBJS_MAIN = $(patsubst src/%.cpp, $(OBJ_DIR)/%.o, $(SRCS_MAIN))

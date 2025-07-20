@@ -1,6 +1,5 @@
 #include <systemc.h>
-#include "base/traffic_generator.h"
-#include "base/index_allocator.h"
+#include "host_system/host_system.h"
 #include "base/memory.h"
 #include "packet/base_packet.h" // Include BasePacket
 #include "packet/generic_packet.h" // Include GenericPacket
@@ -21,8 +20,8 @@ int sc_main(int argc, char* argv[]) {
     // (TrafficGenerator now loads its own config file)
     
     int delay_ns = config.get_int("delay_ns", 10);
-    bool dl_debug = config.get_bool("delay_lines.debug_enable", false);
-    bool mem_debug = config.get_bool("memory.debug_enable", false);
+    bool dl_debug = config.get_bool("debug_enable", false);
+    bool mem_debug = config.get_bool("debug_enable", false);  // Note: same key as dl_debug
     
     bool enable_logging = config.get_bool("enable_file_logging", true);
     
@@ -42,52 +41,29 @@ int sc_main(int argc, char* argv[]) {
         std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
     }
 
-    // Option 1: Traditional parameter-based constructor (commented out)
-    /*
-    TrafficGenerator traffic_generator("traffic_generator", 
-                                     sc_time(interval_ns, SC_NS), 
-                                     static_cast<unsigned int>(locality_percentage), 
-                                     do_reads, 
-                                     do_writes, 
-                                     static_cast<unsigned char>(databyte_value), 
-                                     num_transactions, 
-                                     tg_debug,
-                                     static_cast<unsigned int>(start_address),
-                                     static_cast<unsigned int>(end_address),
-                                     static_cast<unsigned int>(address_increment));
-    */
-    
-    // Option 2: JSON-based constructor (shared config object)
-    // TrafficGenerator traffic_generator("traffic_generator", config);
-    
-    // Option 3: Separate config file approach (best for large components)
-    TrafficGenerator traffic_generator("traffic_generator", "config/traffic_generator_config.json");
-    DelayLine<BasePacket> delay_line1("delay_line1", sc_time(delay_ns, SC_NS), dl_debug);
-    DelayLine<BasePacket> delay_line2("delay_line2", sc_time(delay_ns, SC_NS), dl_debug);
-    DelayLine<BasePacket> delay_line3("delay_line3", sc_time(delay_ns, SC_NS), dl_debug);
-    DelayLine<BasePacket> delay_line4("delay_line4", sc_time(delay_ns, SC_NS), dl_debug);
-    DelayLine<BasePacket> delay_line5("delay_line5", sc_time(delay_ns, SC_NS), dl_debug);
+    // Create HostSystem (contains TrafficGenerator and IndexAllocator) - uses its own config file
+    HostSystem host_system("host_system"); // Uses default host_system_config.json
+    DelayLine<BasePacket> downstream_delay("downstream_delay", sc_time(delay_ns, SC_NS), dl_debug); // HostSystem -> Memory
+    DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
     Memory<BasePacket, int, 65536> memory("memory", mem_debug);
 
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_tg_dl1(2);
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_dl1_dl2(2);
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_dl2_dl3(2);
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_dl3_dl4(2);
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_dl4_dl5(2);
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_dl5_mem(2);
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_host_downstream(2);  // HostSystem -> DownstreamDelay
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_downstream_mem(2);  // DownstreamDelay -> Memory
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_mem_upstream(2);    // Memory -> UpstreamDelay
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_upstream_host(2);   // UpstreamDelay -> HostSystem
 
-    traffic_generator.out(fifo_tg_dl1);
-    delay_line1.in(fifo_tg_dl1);
-    delay_line1.out(fifo_dl1_dl2);
-    delay_line2.in(fifo_dl1_dl2);
-    delay_line2.out(fifo_dl2_dl3);
-    delay_line3.in(fifo_dl2_dl3);
-    delay_line3.out(fifo_dl3_dl4);
-    delay_line4.in(fifo_dl3_dl4);
-    delay_line4.out(fifo_dl4_dl5);
-    delay_line5.in(fifo_dl4_dl5);
-    delay_line5.out(fifo_dl5_mem);
-    memory.in(fifo_dl5_mem);
+    // PCIe-style bidirectional connections:
+    // Downstream path: HostSystem -> DownstreamDelay -> Memory
+    host_system.out(fifo_host_downstream);
+    downstream_delay.in(fifo_host_downstream);
+    downstream_delay.out(fifo_downstream_mem);
+    memory.in(fifo_downstream_mem);
+    
+    // Upstream path: Memory -> UpstreamDelay -> HostSystem (for index release)
+    memory.release_out(fifo_mem_upstream);
+    upstream_delay.in(fifo_mem_upstream);
+    upstream_delay.out(fifo_upstream_host);
+    host_system.release_in(fifo_upstream_host);
 
     std::cout << "Starting simulation..." << std::endl;
     

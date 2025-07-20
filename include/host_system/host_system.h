@@ -1,0 +1,44 @@
+#ifndef HOST_SYSTEM_H
+#define HOST_SYSTEM_H
+
+#include <systemc.h>
+#include <memory>
+#include "base/traffic_generator.h"
+#include "base/index_allocator.h"
+#include "packet/base_packet.h"
+#include "common/json_config.h"
+
+// Forward declaration
+class JsonConfig;
+
+SC_MODULE(HostSystem) {
+    SC_HAS_PROCESS(HostSystem);
+    
+    // External interface - output to the rest of the system
+    sc_fifo_out<std::shared_ptr<BasePacket>> out;
+    
+    // External interface - input from Memory for index release
+    sc_fifo_in<std::shared_ptr<BasePacket>> release_in;
+
+    // Constructor with default config file path
+    HostSystem(sc_module_name name, const std::string& config_file_path = "config/host_system_config.json");
+
+private:
+    // Internal components
+    std::unique_ptr<TrafficGenerator> m_traffic_generator;
+    std::unique_ptr<IndexAllocator<BasePacket>> m_index_allocator;
+    
+    // Internal FIFO connection between TrafficGenerator and IndexAllocator
+    std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>> m_internal_fifo;
+    
+    // Configuration
+    void configure_components(const JsonConfig& config);
+    
+    // Helper method to create index setter function for IndexAllocator
+    std::function<void(BasePacket&, unsigned int)> create_index_setter();
+    
+    // Convert string to AllocationPolicy enum
+    AllocationPolicy string_to_policy(const std::string& policy_str);
+};
+
+#endif

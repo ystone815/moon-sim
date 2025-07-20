@@ -25,6 +25,7 @@ SC_MODULE(IndexAllocator) {
     // Template-based SystemC ports
     sc_fifo_in<std::shared_ptr<PacketType>> in;
     sc_fifo_out<std::shared_ptr<PacketType>> out;
+    sc_fifo_in<std::shared_ptr<PacketType>> release_in; // For processed packets returning from Memory
 
     // Configuration parameters
     const AllocationPolicy m_policy;
@@ -34,7 +35,7 @@ SC_MODULE(IndexAllocator) {
     // Index setter function - allows flexible index assignment
     std::function<void(PacketType&, unsigned int)> m_index_setter;
     
-    // Process method
+    // Process methods
     void allocate_indices() {
         while (true) {
             auto packet = in.read();
@@ -45,8 +46,8 @@ SC_MODULE(IndexAllocator) {
                 continue;
             }
             
-            // Allocate index
-            unsigned int allocated_index = allocate_index();
+            // Wait for available index if pool is exhausted
+            unsigned int allocated_index = allocate_index_blocking();
             
             // Set index using the setter function
             m_index_setter(*packet, allocated_index);
@@ -56,16 +57,49 @@ SC_MODULE(IndexAllocator) {
             m_current_in_use++;
             
             // Log allocation
-            std::cout << sc_time_stamp() << " | IndexAllocator: Allocated index=" 
-                      << allocated_index << ", " << *packet << std::endl;
+            if (m_debug_enable) {
+                std::cout << sc_time_stamp() << " | IndexAllocator: Allocated index=" 
+                          << allocated_index << ", " << *packet << std::endl;
+            }
             
             // Forward packet
             out.write(packet);
             
             // Print statistics periodically
-            if (m_total_allocated % 100 == 0) {
+            if (m_total_allocated % 1000 == 0) {
                 print_statistics();
             }
+        }
+    }
+    
+    void release_indices() {
+        while (true) {
+            auto packet = release_in.read();
+            
+            if (!packet) {
+                SOC_SIM_ERROR("IndexAllocator", soc_sim::error::codes::INVALID_PACKET_TYPE, 
+                             "Received null packet in release path");
+                continue;
+            }
+            
+            // Get index from packet
+            unsigned int released_index = static_cast<unsigned int>(packet->get_attribute("index"));
+            
+            // Release the index
+            release_index(released_index);
+            
+            // Update statistics
+            m_total_deallocated++;
+            m_current_in_use--;
+            
+            // Log release
+            if (m_debug_enable) {
+                std::cout << sc_time_stamp() << " | IndexAllocator: Released index=" 
+                          << released_index << ", " << *packet << std::endl;
+            }
+            
+            // Signal that an index is now available
+            m_index_available.notify();
         }
     }
 
@@ -74,12 +108,14 @@ SC_MODULE(IndexAllocator) {
                   AllocationPolicy policy,
                   unsigned int max_index,
                   bool enable_reuse,
-                  std::function<void(PacketType&, unsigned int)> index_setter)
+                  std::function<void(PacketType&, unsigned int)> index_setter,
+                  bool debug_enable = false)
         : sc_module(name), 
           m_policy(policy), 
           m_max_index(max_index),
           m_enable_reuse(enable_reuse),
           m_index_setter(index_setter),
+          m_debug_enable(debug_enable),
           m_next_sequential_index(0),
           m_round_robin_index(0),
           m_random_generator(std::random_device{}()),
@@ -89,6 +125,7 @@ SC_MODULE(IndexAllocator) {
           m_current_in_use(0) {
         
         SC_THREAD(allocate_indices);
+        SC_THREAD(release_indices);
         
         if (m_policy == AllocationPolicy::POOL_BASED) {
             initialize_free_pool();
@@ -102,13 +139,17 @@ SC_MODULE(IndexAllocator) {
     IndexAllocator(sc_module_name name, 
                   AllocationPolicy policy = AllocationPolicy::SEQUENTIAL,
                   unsigned int max_index = 1024,
-                  bool enable_reuse = true)
+                  bool enable_reuse = true,
+                  bool debug_enable = false)
         : IndexAllocator(name, policy, max_index, enable_reuse,
                         [](PacketType& packet, unsigned int index) {
                             packet.set_attribute("index", static_cast<double>(index));
-                        }) {}
+                        }, debug_enable) {}
 
 private:
+    // Configuration
+    const bool m_debug_enable;
+    
     // Internal state for different allocation policies
     unsigned int m_next_sequential_index;
     unsigned int m_round_robin_index;
@@ -123,6 +164,54 @@ private:
     unsigned int m_total_allocated;
     unsigned int m_total_deallocated;
     unsigned int m_current_in_use;
+    
+    // Synchronization for blocking allocation
+    sc_event m_index_available;
+    
+    // Blocking allocation - waits if no indices available
+    unsigned int allocate_index_blocking() {
+        while (true) {
+            if (can_allocate()) {
+                return allocate_index();
+            }
+            // Wait for an index to become available
+            wait(m_index_available);
+        }
+    }
+    
+    // Check if allocation is possible
+    bool can_allocate() {
+        switch (m_policy) {
+            case AllocationPolicy::POOL_BASED:
+                return !m_free_pool.empty();
+            case AllocationPolicy::SEQUENTIAL:
+            case AllocationPolicy::ROUND_ROBIN:
+            case AllocationPolicy::RANDOM:
+                return m_current_in_use < m_max_index;
+            default:
+                return true;
+        }
+    }
+    
+    // Release an index back to the pool
+    void release_index(unsigned int index) {
+        switch (m_policy) {
+            case AllocationPolicy::POOL_BASED:
+                m_free_pool.push(index);
+                break;
+            case AllocationPolicy::ROUND_ROBIN:
+                if (m_enable_reuse) {
+                    m_allocated_indices.erase(index);
+                }
+                break;
+            case AllocationPolicy::SEQUENTIAL:
+            case AllocationPolicy::RANDOM:
+                // For these policies, we just track the count
+                break;
+            default:
+                break;
+        }
+    }
     
     // Core allocation logic (same as before)
     unsigned int allocate_index() {
