@@ -1,0 +1,27 @@
+# Build artifacts
+obj/
+sim
+*.o
+
+# Log files
+log/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SystemC specific
+*.vcd
+*.wlf
+trace/
+
+# Temporary files
+*.tmp
+*.bak
