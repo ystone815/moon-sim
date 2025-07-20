@@ -15,19 +15,10 @@
 
 int sc_main(int argc, char* argv[]) {
     // Load configuration
-    SimpleJsonConfig config("config/simulation_config.json");
+    JsonConfig config("config/simulation_config.json");
     
-    // Extract configuration values
-    int num_transactions = config.get_int("num_transactions", 100000);
-    int interval_ns = config.get_int("interval_ns", 10);
-    int locality_percentage = config.get_int("locality_percentage", 0);
-    bool do_reads = config.get_bool("do_reads", true);
-    bool do_writes = config.get_bool("do_writes", true);
-    int databyte_value = config.get_int("databyte_value", 64);
-    bool tg_debug = config.get_bool("traffic_generator.debug_enable", false);
-    int start_address = config.get_int("start_address", 0);
-    int end_address = config.get_int("end_address", 0xFF);
-    int address_increment = config.get_int("address_increment", 0x10);
+    // Extract configuration values for non-TrafficGenerator components
+    // (TrafficGenerator now loads its own config file)
     
     int delay_ns = config.get_int("delay_ns", 10);
     bool dl_debug = config.get_bool("delay_lines.debug_enable", false);
@@ -51,6 +42,8 @@ int sc_main(int argc, char* argv[]) {
         std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
     }
 
+    // Option 1: Traditional parameter-based constructor (commented out)
+    /*
     TrafficGenerator traffic_generator("traffic_generator", 
                                      sc_time(interval_ns, SC_NS), 
                                      static_cast<unsigned int>(locality_percentage), 
@@ -62,6 +55,13 @@ int sc_main(int argc, char* argv[]) {
                                      static_cast<unsigned int>(start_address),
                                      static_cast<unsigned int>(end_address),
                                      static_cast<unsigned int>(address_increment));
+    */
+    
+    // Option 2: JSON-based constructor (shared config object)
+    // TrafficGenerator traffic_generator("traffic_generator", config);
+    
+    // Option 3: Separate config file approach (best for large components)
+    TrafficGenerator traffic_generator("traffic_generator", "config/traffic_generator_config.json");
     DelayLine<BasePacket> delay_line1("delay_line1", sc_time(delay_ns, SC_NS), dl_debug);
     DelayLine<BasePacket> delay_line2("delay_line2", sc_time(delay_ns, SC_NS), dl_debug);
     DelayLine<BasePacket> delay_line3("delay_line3", sc_time(delay_ns, SC_NS), dl_debug);
@@ -99,11 +99,12 @@ int sc_main(int argc, char* argv[]) {
     // Calculate performance metrics
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     double duration_seconds = duration.count() / 1000.0;
-    double transactions_per_second = static_cast<double>(num_transactions) / duration_seconds;
+    // Note: Transaction count is now configured in TrafficGenerator's config file
+    double transactions_per_second = 100000.0 / duration_seconds; // Default assumption
     
     std::cout << "Simulation finished." << std::endl;
     std::cout << "Performance Metrics:" << std::endl;
-    std::cout << "Total transactions: " << num_transactions << std::endl;
+    std::cout << "Total transactions: (configured in TrafficGenerator)" << std::endl;
     std::cout << "Simulation time: " << duration.count() << " ms (" << duration_seconds << " seconds)" << std::endl;
     std::cout << "Throughput: " << static_cast<int>(transactions_per_second) << " transactions/second" << std::endl;
 

@@ -1,17 +1,5 @@
 {
   "simulation": {
-    "num_transactions": 100000,
-    "traffic_generator": {
-      "interval_ns": 10,
-      "locality_percentage": 75,
-      "do_reads": true,
-      "do_writes": true,
-      "databyte_value": 64,
-      "debug_enable": false,
-      "start_address": 0,
-      "end_address": 65535,
-      "address_increment": 64
-    },
     "delay_lines": {
       "count": 5,
       "delay_ns": 10,
@@ -32,5 +20,6 @@
     "enable_file_logging": true,
     "log_directory": "log",
     "performance_metrics": true
-  }
+  },
+  "note": "TrafficGenerator config moved to config/traffic_generator_config.json"
 }

@@ -7,6 +7,9 @@
 #include <memory> // For smart pointers
 #include <random> // For C++11 random library
 
+// Forward declaration
+class JsonConfig;
+
 // Locality is now controlled by percentage (0-100)
 // 0 = full random, 100 = full sequential
 
@@ -30,6 +33,12 @@ SC_MODULE(TrafficGenerator) {
 
     // Updated constructor with new parameter
     TrafficGenerator(sc_module_name name, sc_time interval, unsigned int locality_percentage, bool do_reads, bool do_writes, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable = false, unsigned int start_address = 0, unsigned int end_address = 0xFF, unsigned int address_increment = 0x10);
+    
+    // JSON-based constructor (from existing config object)
+    TrafficGenerator(sc_module_name name, const class JsonConfig& config);
+    
+    // JSON file-based constructor (loads own config file)
+    TrafficGenerator(sc_module_name name, const std::string& config_file_path = "config/traffic_generator_config.json");
 
 private:
     unsigned int m_current_address; // For sequential access

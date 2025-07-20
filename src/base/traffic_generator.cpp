@@ -1,5 +1,6 @@
 #include "base/traffic_generator.h"
 #include "common/common_utils.h"
+#include "common/json_config.h"
 
 TrafficGenerator::TrafficGenerator(sc_module_name name, sc_time interval, unsigned int locality_percentage, bool do_reads, bool do_writes, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable, unsigned int start_address, unsigned int end_address, unsigned int address_increment)
     : sc_module(name), m_interval(interval), m_locality_percentage(locality_percentage), m_do_reads(do_reads), m_do_writes(do_writes), m_databyte_value(databyte_value), m_num_transactions(num_transactions), m_debug_enable(debug_enable), m_start_address(start_address), m_end_address(end_address), m_address_increment(address_increment), m_current_address(start_address),
@@ -10,6 +11,36 @@ TrafficGenerator::TrafficGenerator(sc_module_name name, sc_time interval, unsign
       m_locality_dist(0, 99) // For locality percentage check (0-99)
 {
     SC_THREAD(run);
+}
+
+// JSON-based constructor
+TrafficGenerator::TrafficGenerator(sc_module_name name, const JsonConfig& config)
+    : sc_module(name),
+      m_interval(sc_time(config.get_int("interval_ns", 10), SC_NS)),
+      m_locality_percentage(config.get_int("locality_percentage", 0)),
+      m_do_reads(config.get_bool("do_reads", true)),
+      m_do_writes(config.get_bool("do_writes", true)),
+      m_databyte_value(static_cast<unsigned char>(config.get_int("databyte_value", 64))),
+      m_num_transactions(config.get_int("num_transactions", 100000)),
+      m_debug_enable(config.get_bool("debug_enable", false)),
+      m_start_address(config.get_int("start_address", 0)),
+      m_end_address(config.get_int("end_address", 0xFF)),
+      m_address_increment(config.get_int("address_increment", 0x10)),
+      m_current_address(m_start_address),
+      m_random_generator(std::random_device{}()), // Seed with random device
+      m_address_dist(m_start_address, m_end_address), // Configurable address range
+      m_data_dist(0, 0xFFF), // Data range 0-4095
+      m_command_dist(0.5), // 50% probability for each command
+      m_locality_dist(0, 99) // For locality percentage check (0-99)
+{
+    SC_THREAD(run);
+}
+
+// JSON file-based constructor (loads own config file)
+TrafficGenerator::TrafficGenerator(sc_module_name name, const std::string& config_file_path)
+    : TrafficGenerator(name, JsonConfig(config_file_path))
+{
+    // Delegating constructor - loads config file and calls JSON config constructor
 }
 
 void TrafficGenerator::run() {

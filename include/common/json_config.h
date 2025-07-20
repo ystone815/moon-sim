@@ -6,10 +6,10 @@
 #include <iostream>
 #include <map>
 
-// Simple JSON parser for basic key-value pairs
-class SimpleJsonConfig {
+// JSON parser for basic key-value pairs
+class JsonConfig {
 public:
-    SimpleJsonConfig(const std::string& filename) {
+    JsonConfig(const std::string& filename) {
         load_config(filename);
     }
     
