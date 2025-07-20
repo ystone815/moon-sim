@@ -25,3 +25,9 @@ trace/
 # Temporary files
 *.tmp
 *.bak
+
+# Test execution results
+regression_runs/
+config/sweeps/[0-9]*/
+*_debug.log
+sweep_*.log
