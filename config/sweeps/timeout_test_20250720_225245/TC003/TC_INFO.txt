@@ -1,0 +1,7 @@
+Test Case: TC003
+Parameter: write_percentage
+Value: 20
+Batch: timeout_test_20250720_225245
+Generated: Sun Jul 20 22:52:51 KST 2025
+Base Config: config/regression/baseline
+Modified File: traffic_generator_config.json

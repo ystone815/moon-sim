@@ -20,7 +20,7 @@ SC_MODULE(HostSystem) {
     // External interface - input from Memory for index release
     sc_fifo_in<std::shared_ptr<BasePacket>> release_in;
 
-    // Constructor with default config file path
+    // Constructor with config file path and optional traffic generator config directory
     HostSystem(sc_module_name name, const std::string& config_file_path = "config/host_system_config.json");
 
 private:
@@ -32,7 +32,7 @@ private:
     std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>> m_internal_fifo;
     
     // Configuration
-    void configure_components(const JsonConfig& config);
+    void configure_components(const JsonConfig& config, const std::string& config_file_path);
     
     // Helper method to create index setter function for IndexAllocator
     std::function<void(BasePacket&, unsigned int)> create_index_setter();

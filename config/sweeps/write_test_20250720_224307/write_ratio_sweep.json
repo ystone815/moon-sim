@@ -1,0 +1,12 @@
+{
+  "sweep_name": "write_percentage_sweep",
+  "description": "Sweep write_percentage from 0% to 100% in 10% steps",
+  "base_config": "config/regression/baseline",
+  "parameter": "write_percentage",
+  "config_file": "traffic_generator_config.json",
+  "start": 0,
+  "end": 100,
+  "step": 10,
+  "expected_points": 11,
+  "version": "1.0"
+}

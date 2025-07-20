@@ -13,8 +13,17 @@
 #include <iomanip> // For put_time
 
 int sc_main(int argc, char* argv[]) {
-    // Load configuration
-    JsonConfig config("config/simulation_config.json");
+    // Determine config directory (default: config/, override with command line argument)
+    std::string config_dir = "config/";
+    if (argc > 1) {
+        config_dir = std::string(argv[1]);
+        if (config_dir.back() != '/') {
+            config_dir += '/';
+        }
+    }
+    
+    // Load configuration from specified directory
+    JsonConfig config(config_dir + "simulation_config.json");
     
     // Extract configuration values for non-TrafficGenerator components
     // (TrafficGenerator now loads its own config file)
@@ -41,8 +50,8 @@ int sc_main(int argc, char* argv[]) {
         std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
     }
 
-    // Create HostSystem (contains TrafficGenerator and IndexAllocator) - uses its own config file
-    HostSystem host_system("host_system"); // Uses default host_system_config.json
+    // Create HostSystem (contains TrafficGenerator and IndexAllocator) - uses config from specified directory
+    HostSystem host_system("host_system", config_dir + "host_system_config.json");
     DelayLine<BasePacket> downstream_delay("downstream_delay", sc_time(delay_ns, SC_NS), dl_debug); // HostSystem -> Memory
     DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
     Memory<BasePacket, int, 65536> memory("memory", mem_debug);

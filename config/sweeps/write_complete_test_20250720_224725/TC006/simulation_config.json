@@ -1,0 +1,18 @@
+{
+  "simulation": {
+    "delay_lines": {
+      "delay_ns": 10,
+      "debug_enable": false
+    },
+    "memory": {
+      "size": 256,
+      "debug_enable": false
+    }
+  },
+  "logging": {
+    "enable_file_logging": true,
+    "log_directory": "log",
+    "performance_metrics": true
+  },
+  "note": "TrafficGenerator config: config/traffic_generator_config.json, HostSystem config: config/host_system_config.json"
+}

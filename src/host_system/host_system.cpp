@@ -5,15 +5,22 @@
 HostSystem::HostSystem(sc_module_name name, const std::string& config_file_path)
     : sc_module(name) {
     JsonConfig config(config_file_path);
-    configure_components(config);
+    configure_components(config, config_file_path);
 }
 
-void HostSystem::configure_components(const JsonConfig& config) {
+void HostSystem::configure_components(const JsonConfig& config, const std::string& config_file_path) {
     // Create internal FIFO for TrafficGenerator -> IndexAllocator communication
     m_internal_fifo = std::make_unique<sc_fifo<std::shared_ptr<BasePacket>>>(2);
     
-    // Create TrafficGenerator with its own config file
-    m_traffic_generator = std::make_unique<TrafficGenerator>("traffic_generator", "config/traffic_generator_config.json");
+    // Extract config directory from the host system config path
+    std::string config_dir = "config/";
+    size_t last_slash = config_file_path.find_last_of('/');
+    if (last_slash != std::string::npos) {
+        config_dir = config_file_path.substr(0, last_slash + 1);
+    }
+    
+    // Create TrafficGenerator with config from same directory
+    m_traffic_generator = std::make_unique<TrafficGenerator>("traffic_generator", config_dir + "traffic_generator_config.json");
     
     // Extract IndexAllocator configuration from host system config (using leaf keys)
     std::string policy_str = config.get_string("policy", "SEQUENTIAL");

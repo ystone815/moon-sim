@@ -1,0 +1,7 @@
+Test Case: TC007
+Parameter: write_percentage
+Value: 60
+Batch: write_test_20250720_224325
+Generated: Sun Jul 20 22:43:31 KST 2025
+Base Config: config/regression/baseline
+Modified File: traffic_generator_config.json
