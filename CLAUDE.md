@@ -26,36 +26,46 @@ make clean && make
 
 ## Project Architecture
 
-This is a high-performance SystemC-based SoC architecture simulation system with a modular template-based design:
+This is a high-performance SystemC-based SoC architecture simulation system with a PCIe-style bidirectional design:
 
-**TrafficGenerator → DelayLine × 5 → Memory**
+**HostSystem (TrafficGenerator + IndexAllocator) ⟷ Memory**
+- **Downstream**: HostSystem → DownstreamDelay → Memory  
+- **Upstream**: Memory → UpstreamDelay → HostSystem (for index release)
 
 ### Core Components
 
-1. **TrafficGenerator** (`src/base/traffic_generator.cpp`)
-   - Generates READ/WRITE packets with percentage-based locality control (0-100%)
+1. **HostSystem** (`src/host_system/host_system.cpp`)
+   - Encapsulates TrafficGenerator and IndexAllocator as a unified module
+   - Separate JSON configuration file (`config/host_system_config.json`)
+   - Internal FIFO communication between TrafficGenerator and IndexAllocator
+   - PCIe-style bidirectional interface (downstream out, upstream release_in)
+
+2. **TrafficGenerator** (`src/base/traffic_generator.cpp`)
+   - Generates READ/WRITE packets with percentage-based controls:
+     - **Locality**: 0-100% (0=full random, 100=full sequential)
+     - **Write Ratio**: 0-100% (0=all reads, 100=all writes)
    - Configurable address ranges (start_address, end_address, address_increment)
-   - Mixed access patterns: 0=full random, 100=full sequential, 50=mixed
-   - Parameters: interval, locality_percentage, read/write operations, databyte values, transaction count
+   - Separate JSON configuration file (`config/traffic_generator_config.json`)
    - Runtime debug control via JSON configuration
 
-2. **DelayLine** (`include/base/delay_line.h` - Template)
+3. **IndexAllocator** (`include/base/index_allocator.h` - Template)
+   - **Resource-limited allocation**: Configurable max_index pool with blocking when exhausted
+   - **Automatic recycling**: Index deallocation when Memory processing completes
+   - **Bidirectional operation**: Allocation on request path, deallocation on release path
+   - Multiple allocation policies: Sequential, Round-Robin, Random, Pool-based
+   - Template-based packet-type independence with custom index setter functions
+
+4. **DelayLine** (`include/base/delay_line.h` - Template)
+   - **PCIe-style bidirectional**: Separate downstream and upstream DelayLines
    - Header-only template component for any packet type
    - Configurable fixed delay simulation (nanosecond precision)
    - Runtime debug logging control
-   - Multiple instances create pipeline chains
 
-3. **Memory** (`include/base/memory.h` - Template)
+5. **Memory** (`include/base/memory.h` - Template)
    - Template-based scalable memory (256 to 65536+ entries)
+   - **Release path**: Automatic packet return for index deallocation
    - Configurable data types and memory sizes via template parameters
    - Bounds checking with comprehensive error handling
-   - Runtime debug control for performance optimization
-
-4. **IndexAllocator** (`include/base/index_allocator.h` - Template)
-   - Multiple allocation policies: Sequential, Round-Robin, Random, Pool-based
-   - Template-based packet-type independence
-   - Custom index setter functions for flexibility
-   - Statistics tracking and debugging support
 
 ### Packet System
 
@@ -65,23 +75,28 @@ This is a high-performance SystemC-based SoC architecture simulation system with
 
 ### Communication
 
+- **PCIe-style bidirectional**: Separate downstream and upstream paths
 - Components communicate via `sc_fifo<std::shared_ptr<BasePacket>>` 
 - Smart pointers ensure automatic memory management and performance
-- FIFO channels connect components in configurable pipeline sequences
+- **Index lifecycle management**: Allocation → Processing → Release → Recycling
 
 ### Configuration System
 
-- **JSON Runtime Configuration** (`config/simulation_config.json`): No recompilation needed
+- **Modular JSON Configuration**: Separate config files for better organization
+  - `config/simulation_config.json`: Main simulation and DelayLine settings
+  - `config/traffic_generator_config.json`: TrafficGenerator-specific settings
+  - `config/host_system_config.json`: HostSystem and IndexAllocator settings
 - **Per-component debug control**: Enable/disable logging for performance
-- **Scalable parameters**: Address ranges, memory sizes, locality patterns
-- **Performance optimization**: I/O bottleneck elimination
+- **Resource management**: Configurable index pool sizes and allocation policies
+- **Performance optimization**: I/O bottleneck elimination achieving 25M+ tps
 
 ### Performance Features
 
-- **High Throughput**: 600,000+ transactions/second (debug disabled)
+- **Ultra-High Throughput**: 25,000,000+ transactions/second (PCIe-style architecture)
+- **Index Resource Management**: Blocking allocation prevents resource exhaustion
 - **Template Design**: Header-only templates for optimal performance
 - **Smart Logging**: Runtime enable/disable to eliminate I/O bottlenecks
-- **Memory Efficiency**: Shared pointer management with minimal overhead
+- **Memory Efficiency**: Shared pointer management with automatic index recycling
 
 ### Utilities
 
@@ -104,48 +119,79 @@ include/
 ├── base/           # Template components (delay lines, memory, traffic gen, index allocator)
 ├── common/         # Utilities (JSON config, error handling, common utils)
 ├── packet/         # Packet definitions and base classes
-└── host_system/    # (Empty - moved to base for generality)
+└── host_system/    # HostSystem encapsulation module
 
 src/
 ├── base/           # Non-template implementations (traffic_generator.cpp only)
-└── main.cpp        # Simulation entry point with JSON configuration
+├── host_system/    # HostSystem implementation (host_system.cpp)
+└── main.cpp        # Simulation entry point with PCIe-style architecture
 
 config/
-└── simulation_config.json  # Runtime configuration file
+├── simulation_config.json         # Main simulation settings
+├── traffic_generator_config.json  # TrafficGenerator-specific settings
+└── host_system_config.json       # HostSystem and IndexAllocator settings
 
 log/                # Timestamped simulation output logs
 ```
 
-### JSON Configuration Example
+### JSON Configuration Examples
 
+#### `config/traffic_generator_config.json`
+```json
+{
+  "traffic_generator": {
+    "num_transactions": 25,
+    "interval_ns": 10,
+    "locality_percentage": 100,
+    "write_percentage": 100,
+    "databyte_value": 64,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 64
+  }
+}
+```
+
+#### `config/host_system_config.json`
+```json
+{
+  "host_system": {
+    "index_allocator": {
+      "policy": "SEQUENTIAL",
+      "max_index": 10,
+      "enable_reuse": true,
+      "debug_enable": true
+    }
+  }
+}
+```
+
+#### `config/simulation_config.json`
 ```json
 {
   "simulation": {
-    "num_transactions": 100000,
-    "traffic_generator": {
-      "interval_ns": 10,
-      "locality_percentage": 75,
-      "start_address": 0,
-      "end_address": 65535,
-      "address_increment": 64,
-      "debug_enable": false
-    },
     "delay_lines": {
-      "count": 5,
       "delay_ns": 10,
       "debug_enable": false
     },
     "memory": {
+      "size": 256,
       "debug_enable": false
     }
+  },
+  "logging": {
+    "enable_file_logging": true,
+    "performance_metrics": true
   }
 }
 ```
 
 ### Performance Benchmarks
 
-- **Debug Disabled**: 600,000+ transactions/second
+- **PCIe-Style Architecture (Debug Off)**: 25,000,000+ transactions/second
+- **Index Resource Management (10 pool)**: 10,000,000+ transactions/second
 - **Debug Enabled**: ~2,000-3,000 transactions/second  
-- **0% Locality (Random)**: 561,797 tps
-- **100% Locality (Sequential)**: 606,060 tps
-- **75% Locality (Mixed)**: 578,034 tps
+- **100% Write Ratio**: 25,000,000+ transactions/second
+- **Mixed Read/Write (50%)**: 15,000,000+ transactions/second
+- **Legacy 5-Stage Pipeline**: 600,000+ transactions/second
