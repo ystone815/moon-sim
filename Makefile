@@ -1,5 +1,7 @@
+SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11
+
 CXX=g++
-CXXFLAGS=-std=c++11 -I/usr/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L/usr/lib/x86_64-linux-gnu -lsystemc
+CXXFLAGS=-std=c++11 -I$(SYSTEMC_HOME)/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L$(SYSTEMC_HOME)/lib-linux64 -lsystemc -Wl,-rpath=$(SYSTEMC_HOME)/lib-linux64
 
 EXE=sim
 OBJ_DIR=obj
