@@ -12,6 +12,30 @@
 #include <sstream> // For std::stringstream
 #include <chrono>  // For current time
 #include <iomanip> // For put_time
+#include <sys/stat.h> // For mkdir and stat
+#include <errno.h> // For errno
+
+// Function to create directory if it doesn't exist
+bool create_directory(const std::string& path) {
+    struct stat st = {0};
+    
+    // Check if directory already exists
+    if (stat(path.c_str(), &st) == 0) {
+        return true; // Directory exists
+    }
+    
+    // Create directory with permissions 0755
+    if (mkdir(path.c_str(), 0755) == 0) {
+        return true; // Successfully created
+    }
+    
+    // Check if creation failed due to directory already existing (race condition)
+    if (errno == EEXIST) {
+        return true; // Directory was created by another process
+    }
+    
+    return false; // Failed to create directory
+}
 
 int sc_main(int argc, char* argv[]) {
     // Determine config directory (default: config/base/, override with command line argument)
@@ -32,6 +56,12 @@ int sc_main(int argc, char* argv[]) {
     int delay_ns = config.get_int("delay_ns", 10);
     bool dl_debug = config.get_bool("debug_enable", false);
     bool mem_debug = config.get_bool("debug_enable", false);  // Note: same key as dl_debug
+    
+    // Ensure log directory exists
+    if (!create_directory("log")) {
+        std::cerr << "Error: Failed to create log directory. Logging may not work properly." << std::endl;
+        // Continue execution - program should still work without logging
+    }
     
     // Generate a timestamp for the log file
     auto now = std::chrono::system_clock::now();

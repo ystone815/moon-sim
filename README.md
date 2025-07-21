@@ -6,20 +6,22 @@ A high-performance, production-ready SystemC-based simulation framework for Syst
 
 ### Core Architecture
 - **PCIe-Style Bidirectional Design**: Upstream/downstream DelayLines for realistic interconnect modeling
-- **HostSystem Encapsulation**: Integrated TrafficGenerator and IndexAllocator management
+- **HostSystem Encapsulation**: Integrated TrafficGenerator, IndexAllocator, and Function-based Profiler
 - **Template-Based Design**: Header-only template components for maximum flexibility
 - **Modular JSON Configuration**: Separate config files per component for better organization
 - **Smart Memory Management**: Full `std::shared_ptr` integration for automatic memory safety
-- **High Performance**: 25,000,000+ transactions/second throughput
-- **Index Resource Management**: Blocking allocation with automatic recycling
+- **High Performance**: 640+ MB/sec throughput with real-time profiling
+- **Index Resource Management**: Simplified minimum-allocation with automatic recycling
+- **Function-based Profiling**: Real-time throughput monitoring without port overhead
 
 ### Components
 
 #### HostSystem
-- **Encapsulated Architecture**: Contains TrafficGenerator and IndexAllocator as a unified module
+- **Encapsulated Architecture**: Contains TrafficGenerator, IndexAllocator, and Function-based Profiler as a unified module
 - **Separate Configuration**: Dedicated `host_system_config.json` for modular settings
-- **Index Resource Management**: Automatic allocation/deallocation with configurable pool size
+- **Index Resource Management**: Simplified minimum-allocation strategy with automatic recycling
 - **PCIe-Style Interface**: Bidirectional communication with downstream/upstream paths
+- **Integrated Profiling**: Built-in function-based throughput profiler with 10ms reporting
 
 #### TrafficGenerator
 - **Percentage-Based Controls**: 
@@ -45,19 +47,29 @@ A high-performance, production-ready SystemC-based simulation framework for Syst
 - **Release Path**: Automatic packet return for index deallocation
 
 #### IndexAllocator (Template)
-- **Resource-Limited Allocation**: Configurable pool size with blocking when exhausted
-- **Multiple allocation policies**: Sequential, Round-Robin, Random, Pool-based
+- **Simplified Allocation**: Always allocates from minimum available index
+- **Resource-Limited Pool**: Configurable pool size with blocking when exhausted
 - **Automatic Recycling**: Index deallocation when Memory processing completes
+- **Out-of-Order Handling**: Supports non-sequential index release patterns
 - **Template-based**: Packet-type independent
 - **Flexible index assignment**: Custom setter functions
-- **Statistics tracking**: Allocation metrics and debugging
+- **Clean Output**: Optional statistics display for focused profiler reporting
+
+#### FunctionProfiler (Template)
+- **Function-based Design**: Direct function calls eliminate port/event overhead
+- **Real-time Monitoring**: Automatic databyte extraction and accumulation
+- **Configurable Reporting**: Periodic throughput reports (default 10ms intervals)
+- **Comprehensive Metrics**: bytes/sec, MB/sec, packets/sec with cumulative totals
+- **Template-based**: Works with any packet type supporting get_attribute()
+- **Performance Optimized**: No SystemC process overhead or FIFO connections
 
 ### Advanced Features
-- **Modular JSON Configuration**: Separate config files for each major component
-- **Index Resource Management**: Blocking allocation prevents resource exhaustion
+- **Modular JSON Configuration**: Separate config files organized in `config/base/` structure
+- **Simplified Index Management**: Minimum-allocation strategy with out-of-order release support
+- **Function-based Profiling**: Real-time throughput monitoring integrated within HostSystem
 - **PCIe-Style Bidirectional Communication**: Realistic interconnect latency modeling
-- **Debug Control**: Per-component logging enable/disable
-- **Performance Optimization**: I/O bottleneck elimination achieving 25M+ tps
+- **Debug Control**: Per-component logging enable/disable for performance optimization
+- **Automatic Directory Creation**: Smart log directory handling for deployment environments
 - **Error Handling**: Standardized error codes and reporting
 - **Polymorphic Design**: Clean virtual interface patterns
 
@@ -109,9 +121,9 @@ python3 run_sweep.py config/sweeps/small_test.json
 ## ⚙️ Configuration
 
 ### Modular JSON Configuration
-The simulator uses separate JSON configuration files for better modularity:
+The simulator uses separate JSON configuration files organized in `config/base/` for better modularity:
 
-#### `config/simulation_config.json` - Main simulation settings
+#### `config/base/simulation_config.json` - Main simulation settings
 ```json
 {
   "simulation": {
@@ -125,18 +137,18 @@ The simulator uses separate JSON configuration files for better modularity:
     }
   },
   "logging": {
-    "enable_file_logging": true,
+    "log_directory": "log",
     "performance_metrics": true
   }
 }
 ```
 
-#### `config/traffic_generator_config.json` - TrafficGenerator settings
+#### `config/base/traffic_generator_config.json` - TrafficGenerator settings
 ```json
 {
   "traffic_generator": {
-    "num_transactions": 25,
-    "interval_ns": 10,
+    "num_transactions": 1000000,
+    "interval_ns": 100,
     "locality_percentage": 100,
     "write_percentage": 100,
     "databyte_value": 64,
@@ -148,15 +160,13 @@ The simulator uses separate JSON configuration files for better modularity:
 }
 ```
 
-#### `config/host_system_config.json` - HostSystem settings
+#### `config/base/host_system_config.json` - HostSystem settings
 ```json
 {
   "host_system": {
     "index_allocator": {
-      "policy": "SEQUENTIAL",
-      "max_index": 10,
-      "enable_reuse": true,
-      "debug_enable": true
+      "max_index": 100,
+      "debug_enable": false
     }
   }
 }
@@ -172,17 +182,19 @@ The simulator uses separate JSON configuration files for better modularity:
 
 ## 📊 Architecture Overview
 
-### PCIe-Style Bidirectional Design
+### PCIe-Style Bidirectional Design with Integrated Profiler
 ```
-┌─────────────────────────────────┐
-│           HostSystem            │
-│ ┌─────────────────┐ ┌─────────┐ │
-│ │ TrafficGenerator│ │IndexAlloc│ │
-│ └─────────────────┘ └─────────┘ │
-└─────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│                HostSystem                   │
+│ ┌─────────────────┐ ┌─────────┐ ┌────────┐  │
+│ │ TrafficGenerator│ │IndexAlloc│ │Function│  │
+│ │                 │ │         │ │Profiler│  │
+│ └─────────────────┘ └─────────┘ └────────┘  │
+└─────────────────────────────────────────────┘
            │                ▲
      downstream        upstream
         path             path
+    (with profiling)        │
            │                │
            ▼                │
 ┌─────────────┐      ┌─────────────┐
@@ -200,22 +212,24 @@ The simulator uses separate JSON configuration files for better modularity:
 ```
 
 ### Key Features
-- **HostSystem**: Encapsulated TrafficGenerator + IndexAllocator
+- **HostSystem**: Encapsulated TrafficGenerator + IndexAllocator + FunctionProfiler
 - **PCIe-Style**: Bidirectional DelayLines for realistic latency
-- **Index Management**: Resource-limited allocation with recycling
-- **Modular Config**: Separate JSON files per component
+- **Index Management**: Simplified minimum-allocation with out-of-order recycling
+- **Function-based Profiling**: Real-time throughput monitoring integrated within datapath
+- **Modular Config**: Separate JSON files per component in `config/base/`
+- **Smart Directory Handling**: Automatic log directory creation for deployment
 
 ## 📈 Performance Benchmarks
 
 ### Throughput Results
-| Configuration | Throughput (tps) | Notes |
-|---------------|------------------|-------|
-| PCIe-Style (Debug Off) | **25,000,000+** | New bidirectional architecture |
-| Index Limited (10 pool) | 10,000,000+ | With resource management |
-| Debug Enabled | ~2,000-3,000 | With I/O logging |
-| Legacy Pipeline | 600,000+ | Previous 5-stage design |
-| 100% Write Ratio | 25,000,000+ | All WRITE operations |
-| Mixed Read/Write | 15,000,000+ | 50% write percentage |
+| Configuration | Throughput | Notes |
+|---------------|------------|-------|
+| **Function-based Profiler** | **640+ MB/sec** | Real-time profiling with 610.35 MB/sec sustained |
+| **Simulation Performance** | **48,000-55,000 tps** | 1M transactions in ~2 seconds |
+| **Profiler Overhead** | **Minimal** | Function calls vs. port-based communication |
+| **Index Pool (100 entries)** | **No blocking** | Minimum allocation strategy |
+| **Debug Disabled** | **Optimal** | Clean profiler-only output |
+| **Parameter Sweeps** | **39,000-55,000 tps** | Consistent across write ratio variations |
 
 ### Memory Configurations
 - **Small (256 entries)**: Basic testing
@@ -247,10 +261,12 @@ vim config/host_system_config.json        # Edit max_index, allocation policy
 
 ## 🧪 Simulation Output
 
-- **Timestamped logs**: Saved to `log/simulation_YYYYMMDD_HHMMSS.log`
-- **Performance metrics**: Throughput and timing analysis
-- **Debug traces**: Detailed packet flow (when enabled)
-- **Error reporting**: Centralized error handling
+- **Timestamped logs**: Saved to `log/simulation_YYYYMMDD_HHMMSS.log` (auto-created directory)
+- **Real-time profiling**: 10ms periodic throughput reports with bytes/sec, MB/sec, packets/sec
+- **Performance metrics**: Comprehensive timing and throughput analysis
+- **Clean output**: IndexAllocator statistics disabled for focused profiler reporting
+- **Parameter sweep results**: CSV data and summary reports in `regression_runs/`
+- **Error reporting**: Centralized error handling with deployment-friendly directory creation
 
 ## 🎯 Use Cases
 
@@ -274,13 +290,14 @@ This simulator follows modern C++ and SystemC best practices:
 
 ## 🚀 Performance Features
 
-- **Ultra-High Throughput**: 25M+ transactions/second
+- **Function-based Profiling**: 640+ MB/sec throughput monitoring without port overhead
 - **PCIe-Style Architecture**: Realistic bidirectional interconnect modeling
-- **Index Resource Management**: Blocking allocation prevents resource exhaustion
-- **Low Overhead**: Minimal logging bottlenecks with optional debug
-- **Scalable Design**: Template-based components
+- **Simplified Index Management**: Minimum-allocation strategy with out-of-order recycling
+- **Deployment Ready**: Automatic log directory creation for production environments
+- **Low Overhead**: Direct function calls eliminate SystemC event processing
+- **Scalable Design**: Template-based components with C++11 compatibility
 - **Memory Efficient**: Smart pointer management with automatic recycling
-- **Cache Friendly**: Optimized data access patterns
+- **Real-time Monitoring**: 10ms periodic reporting with comprehensive metrics
 
 ## 📝 License
 
