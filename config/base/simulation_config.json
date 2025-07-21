@@ -10,7 +10,6 @@
     }
   },
   "logging": {
-    "enable_file_logging": true,
     "log_directory": "log",
     "performance_metrics": true
   },

@@ -1,7 +1,7 @@
 {
   "traffic_generator": {
-    "num_transactions": 100000,
-    "interval_ns": 10,
+    "num_transactions": 1000000,
+    "interval_ns": 100,
     "locality_percentage": 100,
     "write_percentage": 100,
     "databyte_value": 64,

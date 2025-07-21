@@ -5,6 +5,7 @@
 #include "packet/generic_packet.h" // Include GenericPacket
 #include "base/delay_line.h"
 #include "base/delay_line_databyte.h"
+#include "base/profiler.h"
 #include "common/common_utils.h"
 #include "common/json_config.h"
 #include <memory> // For std::unique_ptr
@@ -33,8 +34,6 @@ int sc_main(int argc, char* argv[]) {
     bool dl_debug = config.get_bool("debug_enable", false);
     bool mem_debug = config.get_bool("debug_enable", false);  // Note: same key as dl_debug
     
-    bool enable_logging = config.get_bool("enable_file_logging", true);
-    
     // Generate a timestamp for the log file
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
@@ -42,30 +41,31 @@ int sc_main(int argc, char* argv[]) {
     ss << "log/simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
     std::string log_filename = ss.str();
 
-    // Redirect cout to the log file if enabled
+    // Always redirect cout to the log file
     std::ofstream log_file;
-    std::streambuf* cout_sbuf = nullptr;
-    if (enable_logging) {
-        log_file.open(log_filename);
-        cout_sbuf = std::cout.rdbuf(); // Save original streambuf
-        std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
-    }
+    log_file.open(log_filename);
+    std::streambuf* cout_sbuf = std::cout.rdbuf(); // Save original streambuf
+    std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
 
     // Create HostSystem (contains TrafficGenerator and IndexAllocator) - uses config from specified directory
     HostSystem host_system("host_system", config_dir + "host_system_config.json");
+    Profiler<BasePacket> throughput_profiler("throughput_profiler", sc_time(10, SC_MS), false, "ThroughputProfiler");
     DelayLine<BasePacket> downstream_delay("downstream_delay", sc_time(delay_ns, SC_NS), dl_debug); // HostSystem -> Memory
     DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
     Memory<BasePacket, int, 65536> memory("memory", mem_debug);
 
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_host_downstream(2);  // HostSystem -> DownstreamDelay
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_host_profiler(2);     // HostSystem -> Profiler
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_profiler_downstream(2); // Profiler -> DownstreamDelay
     sc_fifo<std::shared_ptr<BasePacket>> fifo_downstream_mem(2);  // DownstreamDelay -> Memory
     sc_fifo<std::shared_ptr<BasePacket>> fifo_mem_upstream(2);    // Memory -> UpstreamDelay
     sc_fifo<std::shared_ptr<BasePacket>> fifo_upstream_host(2);   // UpstreamDelay -> HostSystem
 
-    // PCIe-style bidirectional connections:
-    // Downstream path: HostSystem -> DownstreamDelay -> Memory
-    host_system.out(fifo_host_downstream);
-    downstream_delay.in(fifo_host_downstream);
+    // PCIe-style bidirectional connections with profiler:
+    // Downstream path: HostSystem -> Profiler -> DownstreamDelay -> Memory
+    host_system.out(fifo_host_profiler);
+    throughput_profiler.in(fifo_host_profiler);
+    throughput_profiler.out(fifo_profiler_downstream);
+    downstream_delay.in(fifo_profiler_downstream);
     downstream_delay.out(fifo_downstream_mem);
     memory.in(fifo_downstream_mem);
     
@@ -95,10 +95,8 @@ int sc_main(int argc, char* argv[]) {
     std::cout << "Throughput: " << static_cast<int>(transactions_per_second) << " transactions/second" << std::endl;
 
     // Restore cout to its original streambuf
-    if (enable_logging && cout_sbuf) {
-        std::cout.rdbuf(cout_sbuf);
-        log_file.close();
-    }
+    std::cout.rdbuf(cout_sbuf);
+    log_file.close();
 
     return 0;
 }

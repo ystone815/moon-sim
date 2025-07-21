@@ -1,6 +1,6 @@
 {
   "traffic_generator": {
-    "num_transactions": 100000,
+    "num_transactions": 10,
     "interval_ns": 10,
     "locality_percentage": 100,
     "write_percentage": 100,
@@ -10,6 +10,6 @@
     "end_address": 65535,
     "address_increment": 64
   },
-  "description": "TrafficGenerator specific configuration",
+  "description": "TrafficGenerator test configuration",
   "version": "1.0"
 }

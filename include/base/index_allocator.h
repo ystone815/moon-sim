@@ -54,10 +54,10 @@ SC_MODULE(IndexAllocator) {
             // Forward packet
             out.write(packet);
             
-            // Print statistics periodically
-            if (m_total_allocated % 1000 == 0) {
-                print_statistics();
-            }
+            // Print statistics periodically (disabled for cleaner output)
+            // if (m_total_allocated % 1000 == 0) {
+            //     print_statistics();
+            // }
         }
     }
     
