@@ -1,7 +1,0 @@
-Test Case: TC001
-Parameter: write_percentage
-Value: 0
-Batch: arithmetic_fix_test_20250720_225338
-Generated: Sun Jul 20 22:53:43 KST 2025
-Base Config: config/regression/baseline
-Modified File: traffic_generator_config.json

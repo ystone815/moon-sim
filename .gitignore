@@ -28,6 +28,6 @@ trace/
 
 # Test execution results
 regression_runs/
-config/sweeps/[0-9]*/
+temp/
 *_debug.log
 sweep_*.log

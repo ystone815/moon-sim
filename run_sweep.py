@@ -38,7 +38,7 @@ class SweepRunner:
         self.batch_with_time = f"{timestamp}_{self.batch_name}"
         
         # Setup directories
-        self.sweep_config_dir = Path(f"config/sweeps/{self.batch_with_time}")
+        self.sweep_config_dir = Path(f"temp/sweep_configs/{self.batch_with_time}")
         self.sweep_results_dir = Path(f"regression_runs/{self.batch_with_time}")
         
         # Results tracking
