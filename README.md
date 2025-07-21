@@ -64,9 +64,29 @@ A high-performance, production-ready SystemC-based simulation framework for Syst
 ## 🛠 Building
 
 ### Prerequisites
-- SystemC 2.3.4+ installed at `/usr/local/systemc`
+- SystemC 2.3.3+ (Custom C++11 build recommended)
 - GCC with C++11 support
+- Python 3 (for parameter sweeps)
 - Make
+
+### Environment Setup
+
+**Set SYSTEMC_HOME environment variable** (required):
+
+```bash
+# For the included C++11 build:
+export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11
+
+# For system-wide installation:
+export SYSTEMC_HOME=/usr/local/systemc
+
+# For custom installation:
+export SYSTEMC_HOME=/path/to/your/systemc
+
+# Add to ~/.bashrc for permanent setting:
+echo 'export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11' >> ~/.bashrc
+source ~/.bashrc
+```
 
 ### Build Commands
 ```bash
@@ -81,6 +101,9 @@ make clean && make
 
 # Run simulation
 ./sim
+
+# Run parameter sweeps
+python3 run_sweep.py config/sweeps/small_test.json
 ```
 
 ## ⚙️ Configuration

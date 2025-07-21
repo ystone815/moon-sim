@@ -4,6 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build and Development Commands
 
+### Environment Setup (Required)
+```bash
+# Set SYSTEMC_HOME environment variable
+export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11
+
+# Or for different installations:
+export SYSTEMC_HOME=/usr/local/systemc        # System installation
+export SYSTEMC_HOME=/opt/systemc              # Custom location
+
+# Add to ~/.bashrc for permanent setting:
+echo 'export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ### Build the simulation (C++11 with custom SystemC)
 ```bash
 make clean && make
@@ -22,9 +36,11 @@ python3 run_sweep.py config/sweeps/write_ratio_sweep.json
 ```
 
 ### SystemC Environment
+- **Environment Variable**: `SYSTEMC_HOME` must be set (Makefile enforces this)
 - **Custom C++11 SystemC**: Built from SystemC 2.3.3 source with `-std=c++11`
-- **Installation Path**: `/tmp/systemc-install/usr/local/systemc-cxx11`
+- **Default Path**: `/tmp/systemc-install/usr/local/systemc-cxx11`
 - **Corporate Compatible**: Works in C++11-only environments
+- **Flexible Installation**: Supports any SystemC installation path via environment variable
 
 ## Project Architecture
 

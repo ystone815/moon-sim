@@ -1,4 +1,8 @@
-SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11
+# SystemC environment - set SYSTEMC_HOME in your shell environment
+# Example: export SYSTEMC_HOME=/usr/local/systemc
+ifndef SYSTEMC_HOME
+$(error SYSTEMC_HOME is not set. Please set it in your environment: export SYSTEMC_HOME=/path/to/systemc)
+endif
 
 CXX=g++
 CXXFLAGS=-std=c++11 -I$(SYSTEMC_HOME)/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L$(SYSTEMC_HOME)/lib-linux64 -lsystemc -Wl,-rpath=$(SYSTEMC_HOME)/lib-linux64
