@@ -9,8 +9,10 @@ HostSystem::HostSystem(sc_module_name name, const std::string& config_file_path)
 }
 
 void HostSystem::configure_components(const JsonConfig& config, const std::string& config_file_path) {
-    // Create internal FIFO for TrafficGenerator -> IndexAllocator communication
+    // Create internal FIFOs
     m_internal_fifo = std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>>(
+        new sc_fifo<std::shared_ptr<BasePacket>>(2));
+    m_profiling_fifo = std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>>(
         new sc_fifo<std::shared_ptr<BasePacket>>(2));
     
     // Extract config directory from the host system config path
@@ -37,16 +39,37 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
             ia_debug
         ));
     
+    // Create function profiler
+    m_profiler = std::unique_ptr<FunctionProfiler<BasePacket>>(
+        new FunctionProfiler<BasePacket>("HostSystem_Profiler", sc_time(10, SC_MS), false));
+    
     // Connect components:
-    // TrafficGenerator -> internal_fifo -> IndexAllocator -> out
+    // TrafficGenerator -> internal_fifo -> IndexAllocator -> profiling_fifo -> profiling_process -> out
     // release_in -> IndexAllocator (for index deallocation)
     m_traffic_generator->out(*m_internal_fifo);
     m_index_allocator->in(*m_internal_fifo);
-    m_index_allocator->out(out);
+    m_index_allocator->out(*m_profiling_fifo);
     m_index_allocator->release_in(release_in);
+    
+    // Start profiling process
+    SC_THREAD(profiling_process);
     
     std::cout << "HostSystem: Configured with TrafficGenerator and IndexAllocator" << std::endl;
     std::cout << "  IndexAllocator max_index: " << max_index << std::endl;
+}
+
+void HostSystem::profiling_process() {
+    while (true) {
+        auto packet = m_profiling_fifo->read();
+        
+        if (packet) {
+            // Profile the packet
+            m_profiler->profile_packet(packet);
+            
+            // Forward to external output
+            out.write(packet);
+        }
+    }
 }
 
 std::function<void(BasePacket&, unsigned int)> HostSystem::create_index_setter() {

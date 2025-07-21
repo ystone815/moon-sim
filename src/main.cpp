@@ -5,7 +5,6 @@
 #include "packet/generic_packet.h" // Include GenericPacket
 #include "base/delay_line.h"
 #include "base/delay_line_databyte.h"
-#include "base/profiler.h"
 #include "common/common_utils.h"
 #include "common/json_config.h"
 #include <memory> // For std::unique_ptr
@@ -47,25 +46,21 @@ int sc_main(int argc, char* argv[]) {
     std::streambuf* cout_sbuf = std::cout.rdbuf(); // Save original streambuf
     std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
 
-    // Create HostSystem (contains TrafficGenerator and IndexAllocator) - uses config from specified directory
+    // Create HostSystem (contains TrafficGenerator, IndexAllocator, and embedded Profiler) - uses config from specified directory
     HostSystem host_system("host_system", config_dir + "host_system_config.json");
-    Profiler<BasePacket> throughput_profiler("throughput_profiler", sc_time(10, SC_MS), false, "ThroughputProfiler");
     DelayLine<BasePacket> downstream_delay("downstream_delay", sc_time(delay_ns, SC_NS), dl_debug); // HostSystem -> Memory
     DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
     Memory<BasePacket, int, 65536> memory("memory", mem_debug);
 
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_host_profiler(2);     // HostSystem -> Profiler
-    sc_fifo<std::shared_ptr<BasePacket>> fifo_profiler_downstream(2); // Profiler -> DownstreamDelay
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_host_downstream(2);  // HostSystem -> DownstreamDelay
     sc_fifo<std::shared_ptr<BasePacket>> fifo_downstream_mem(2);  // DownstreamDelay -> Memory
     sc_fifo<std::shared_ptr<BasePacket>> fifo_mem_upstream(2);    // Memory -> UpstreamDelay
     sc_fifo<std::shared_ptr<BasePacket>> fifo_upstream_host(2);   // UpstreamDelay -> HostSystem
 
-    // PCIe-style bidirectional connections with profiler:
-    // Downstream path: HostSystem -> Profiler -> DownstreamDelay -> Memory
-    host_system.out(fifo_host_profiler);
-    throughput_profiler.in(fifo_host_profiler);
-    throughput_profiler.out(fifo_profiler_downstream);
-    downstream_delay.in(fifo_profiler_downstream);
+    // PCIe-style bidirectional connections with embedded profiler:
+    // Downstream path: HostSystem(with profiler) -> DownstreamDelay -> Memory
+    host_system.out(fifo_host_downstream);
+    downstream_delay.in(fifo_host_downstream);
     downstream_delay.out(fifo_downstream_mem);
     memory.in(fifo_downstream_mem);
     
