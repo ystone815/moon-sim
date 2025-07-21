@@ -1,7 +1,7 @@
 {
   "sweep_name": "max_index_sweep",
   "description": "Sweep IndexAllocator max_index from 10 to 100 in steps of 10",
-  "base_config": "config/regression/baseline",
+  "base_config": "config",
   "parameter": "max_index",
   "config_file": "host_system_config.json",
   "start": 10,

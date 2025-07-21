@@ -124,12 +124,12 @@ class SweepRunner:
             # Create TC config directory
             tc_config_dir.mkdir(exist_ok=True)
             
-            # Copy base config files
+            # Copy base config files (exclude sweeps directory to prevent infinite recursion)
             base_config_path = Path(self.sweep_config['base_config'])
             for item in base_config_path.iterdir():
                 if item.is_file():
                     shutil.copy2(item, tc_config_dir)
-                elif item.is_dir():
+                elif item.is_dir() and item.name != "sweeps":
                     shutil.copytree(item, tc_config_dir / item.name, dirs_exist_ok=True)
             
             # Modify the target parameter

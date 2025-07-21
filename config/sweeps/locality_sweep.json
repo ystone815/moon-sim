@@ -1,7 +1,7 @@
 {
   "sweep_name": "locality_percentage_sweep",
   "description": "Sweep locality_percentage from 0% to 100% in 25% steps",
-  "base_config": "config/regression/baseline",
+  "base_config": "config",
   "parameter": "locality_percentage",
   "config_file": "traffic_generator_config.json",
   "start": 0,
