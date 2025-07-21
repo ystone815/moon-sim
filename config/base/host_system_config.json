@@ -1,12 +1,10 @@
 {
   "host_system": {
     "index_allocator": {
-      "policy": "SEQUENTIAL",
       "max_index": 100,
-      "enable_reuse": true,
       "debug_enable": false
     }
   },
-  "description": "HostSystem configuration including IndexAllocator settings",
+  "description": "HostSystem configuration with simplified IndexAllocator (always minimum allocation)",
   "version": "1.0"
 }

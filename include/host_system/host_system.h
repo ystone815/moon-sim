@@ -36,9 +36,6 @@ private:
     
     // Helper method to create index setter function for IndexAllocator
     std::function<void(BasePacket&, unsigned int)> create_index_setter();
-    
-    // Convert string to AllocationPolicy enum
-    AllocationPolicy string_to_policy(const std::string& policy_str);
 };
 
 #endif

@@ -25,19 +25,14 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
         new TrafficGenerator("traffic_generator", config_dir + "traffic_generator_config.json"));
     
     // Extract IndexAllocator configuration from host system config (using leaf keys)
-    std::string policy_str = config.get_string("policy", "SEQUENTIAL");
-    AllocationPolicy policy = string_to_policy(policy_str);
     unsigned int max_index = config.get_int("max_index", 1024);
-    bool enable_reuse = config.get_bool("enable_reuse", true);
     bool ia_debug = config.get_bool("debug_enable", false);
     
     // Create IndexAllocator with custom index setter
     m_index_allocator = std::unique_ptr<IndexAllocator<BasePacket>>(
         new IndexAllocator<BasePacket>(
             "index_allocator", 
-            policy, 
             max_index, 
-            enable_reuse,
             create_index_setter(),
             ia_debug
         ));
@@ -51,28 +46,11 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
     m_index_allocator->release_in(release_in);
     
     std::cout << "HostSystem: Configured with TrafficGenerator and IndexAllocator" << std::endl;
-    std::cout << "  IndexAllocator policy: " << policy_str << std::endl;
     std::cout << "  IndexAllocator max_index: " << max_index << std::endl;
-    std::cout << "  IndexAllocator enable_reuse: " << (enable_reuse ? "true" : "false") << std::endl;
 }
 
 std::function<void(BasePacket&, unsigned int)> HostSystem::create_index_setter() {
     return [](BasePacket& packet, unsigned int index) {
         packet.set_attribute("index", static_cast<double>(index));
     };
-}
-
-AllocationPolicy HostSystem::string_to_policy(const std::string& policy_str) {
-    if (policy_str == "SEQUENTIAL") {
-        return AllocationPolicy::SEQUENTIAL;
-    } else if (policy_str == "ROUND_ROBIN") {
-        return AllocationPolicy::ROUND_ROBIN;
-    } else if (policy_str == "RANDOM") {
-        return AllocationPolicy::RANDOM;
-    } else if (policy_str == "POOL_BASED") {
-        return AllocationPolicy::POOL_BASED;
-    } else {
-        std::cout << "Warning: Unknown policy '" << policy_str << "', defaulting to SEQUENTIAL" << std::endl;
-        return AllocationPolicy::SEQUENTIAL;
-    }
 }
