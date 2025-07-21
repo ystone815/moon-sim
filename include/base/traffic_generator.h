@@ -37,7 +37,7 @@ SC_MODULE(TrafficGenerator) {
     TrafficGenerator(sc_module_name name, const class JsonConfig& config);
     
     // JSON file-based constructor (loads own config file)
-    TrafficGenerator(sc_module_name name, const std::string& config_file_path = "config/traffic_generator_config.json");
+    TrafficGenerator(sc_module_name name, const std::string& config_file_path = "config/base/traffic_generator_config.json");
 
 private:
     unsigned int m_current_address; // For sequential access

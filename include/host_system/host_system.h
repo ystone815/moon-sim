@@ -21,7 +21,7 @@ SC_MODULE(HostSystem) {
     sc_fifo_in<std::shared_ptr<BasePacket>> release_in;
 
     // Constructor with config file path and optional traffic generator config directory
-    HostSystem(sc_module_name name, const std::string& config_file_path = "config/host_system_config.json");
+    HostSystem(sc_module_name name, const std::string& config_file_path = "config/base/host_system_config.json");
 
 private:
     // Internal components

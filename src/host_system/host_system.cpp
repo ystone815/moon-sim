@@ -14,7 +14,7 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
         new sc_fifo<std::shared_ptr<BasePacket>>(2));
     
     // Extract config directory from the host system config path
-    std::string config_dir = "config/";
+    std::string config_dir = "config/base/";
     size_t last_slash = config_file_path.find_last_of('/');
     if (last_slash != std::string::npos) {
         config_dir = config_file_path.substr(0, last_slash + 1);

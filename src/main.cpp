@@ -14,8 +14,8 @@
 #include <iomanip> // For put_time
 
 int sc_main(int argc, char* argv[]) {
-    // Determine config directory (default: config/, override with command line argument)
-    std::string config_dir = "config/";
+    // Determine config directory (default: config/base/, override with command line argument)
+    std::string config_dir = "config/base/";
     if (argc > 1) {
         config_dir = std::string(argv[1]);
         if (config_dir.back() != '/') {
