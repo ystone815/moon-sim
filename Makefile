@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-std=c++17 -I/usr/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L/usr/lib/x86_64-linux-gnu -lsystemc
+CXXFLAGS=-std=c++11 -I/usr/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L/usr/lib/x86_64-linux-gnu -lsystemc
 
 EXE=sim
 OBJ_DIR=obj

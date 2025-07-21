@@ -10,7 +10,8 @@ HostSystem::HostSystem(sc_module_name name, const std::string& config_file_path)
 
 void HostSystem::configure_components(const JsonConfig& config, const std::string& config_file_path) {
     // Create internal FIFO for TrafficGenerator -> IndexAllocator communication
-    m_internal_fifo = std::make_unique<sc_fifo<std::shared_ptr<BasePacket>>>(2);
+    m_internal_fifo = std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>>(
+        new sc_fifo<std::shared_ptr<BasePacket>>(2));
     
     // Extract config directory from the host system config path
     std::string config_dir = "config/";
@@ -20,7 +21,8 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
     }
     
     // Create TrafficGenerator with config from same directory
-    m_traffic_generator = std::make_unique<TrafficGenerator>("traffic_generator", config_dir + "traffic_generator_config.json");
+    m_traffic_generator = std::unique_ptr<TrafficGenerator>(
+        new TrafficGenerator("traffic_generator", config_dir + "traffic_generator_config.json"));
     
     // Extract IndexAllocator configuration from host system config (using leaf keys)
     std::string policy_str = config.get_string("policy", "SEQUENTIAL");
@@ -30,14 +32,15 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
     bool ia_debug = config.get_bool("debug_enable", false);
     
     // Create IndexAllocator with custom index setter
-    m_index_allocator = std::make_unique<IndexAllocator<BasePacket>>(
-        "index_allocator", 
-        policy, 
-        max_index, 
-        enable_reuse,
-        create_index_setter(),
-        ia_debug
-    );
+    m_index_allocator = std::unique_ptr<IndexAllocator<BasePacket>>(
+        new IndexAllocator<BasePacket>(
+            "index_allocator", 
+            policy, 
+            max_index, 
+            enable_reuse,
+            create_index_setter(),
+            ia_debug
+        ));
     
     // Connect components:
     // TrafficGenerator -> internal_fifo -> IndexAllocator -> out
