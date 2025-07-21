@@ -4,25 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build and Development Commands
 
-### Build the simulation
+### Build the simulation (C++11 with custom SystemC)
 ```bash
-make
-```
-
-### Clean build artifacts
-```bash
-make clean
+make clean && make
 ```
 
 ### Run the simulation
 ```bash
-./sim
+./sim                           # Use default config/ directory
+./sim config/sweeps/my_test/    # Use specific configuration
 ```
 
-### Build from scratch
+### Run parameter sweeps
 ```bash
-make clean && make
+python3 run_sweep.py config/sweeps/small_test.json
+python3 run_sweep.py config/sweeps/write_ratio_sweep.json
 ```
+
+### SystemC Environment
+- **Custom C++11 SystemC**: Built from SystemC 2.3.3 source with `-std=c++11`
+- **Installation Path**: `/tmp/systemc-install/usr/local/systemc-cxx11`
+- **Corporate Compatible**: Works in C++11-only environments
 
 ## Project Architecture
 
@@ -187,11 +189,52 @@ log/                # Timestamped simulation output logs
 }
 ```
 
-### Performance Benchmarks
+### Parameter Sweep Configuration Examples
+
+#### `config/sweeps/small_test.json`
+```json
+{
+  "sweep_name": "small_write_test",
+  "description": "Small test with only 3 points",
+  "base_config": "config",
+  "parameter": "write_percentage",
+  "config_file": "traffic_generator_config.json",
+  "start": 0,
+  "end": 20,
+  "step": 10,
+  "expected_points": 3,
+  "version": "1.0"
+}
+```
+
+#### `config/sweeps/write_ratio_sweep.json`
+```json
+{
+  "sweep_name": "write_percentage_sweep",
+  "description": "Sweep write_percentage from 0% to 100% in 10% steps",
+  "base_config": "config",
+  "parameter": "write_percentage",
+  "config_file": "traffic_generator_config.json",
+  "start": 0,
+  "end": 100,
+  "step": 10,
+  "expected_points": 11,
+  "version": "1.0"
+}
+```
+
+### Performance Benchmarks (C++11 Environment)
 
 - **PCIe-Style Architecture (Debug Off)**: 25,000,000+ transactions/second
-- **Index Resource Management (10 pool)**: 10,000,000+ transactions/second
-- **Debug Enabled**: ~2,000-3,000 transactions/second  
+- **Index Resource Management (100 pool)**: 10,000,000+ transactions/second
 - **100% Write Ratio**: 25,000,000+ transactions/second
 - **Mixed Read/Write (50%)**: 15,000,000+ transactions/second
-- **Legacy 5-Stage Pipeline**: 600,000+ transactions/second
+- **Debug Enabled**: ~2,000-3,000 transactions/second
+- **Parameter Sweeps**: TC001-TC003 format with performance metrics
+
+### C++11 Compatibility Notes
+
+- **No std::make_unique**: Uses `std::unique_ptr<T>(new T(...))` for C++11 compatibility
+- **Custom SystemC Build**: SystemC 2.3.3 compiled with `-std=c++11` standard
+- **Template Components**: All performance-critical components are header-only templates
+- **Corporate Environment Ready**: Tested in C++11-only environments
