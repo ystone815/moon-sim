@@ -9,6 +9,7 @@
 #include "common/json_config.h"
 #include <memory> // For std::unique_ptr
 #include <fstream> // For file operations
+#include <sstream> // For std::stringstream
 #include <chrono>  // For current time
 #include <iomanip> // For put_time
 

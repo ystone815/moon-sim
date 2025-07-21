@@ -1,7 +1,5 @@
-SYSTEMC_HOME=/usr/local/systemc
-
 CXX=g++
-CXXFLAGS=-I$(SYSTEMC_HOME)/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L$(SYSTEMC_HOME)/lib-linux64 -lsystemc -Wl,-rpath=$(SYSTEMC_HOME)/lib-linux64
+CXXFLAGS=-std=c++17 -I/usr/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet -L/usr/lib/x86_64-linux-gnu -lsystemc
 
 EXE=sim
 OBJ_DIR=obj
