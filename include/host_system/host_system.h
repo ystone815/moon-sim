@@ -5,7 +5,7 @@
 #include <memory>
 #include "base/traffic_generator.h"
 #include "base/index_allocator.h"
-#include "base/function_profiler.h"
+#include "base/profiler_bw.h"
 #include "packet/base_packet.h"
 #include "common/json_config.h"
 
@@ -28,7 +28,7 @@ private:
     // Internal components
     std::unique_ptr<TrafficGenerator> m_traffic_generator;
     std::unique_ptr<IndexAllocator<BasePacket>> m_index_allocator;
-    std::unique_ptr<FunctionProfiler<BasePacket>> m_profiler;
+    std::unique_ptr<ProfilerBW<BasePacket>> m_profiler;
     
     // Internal FIFO connection between TrafficGenerator and IndexAllocator
     std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>> m_internal_fifo;

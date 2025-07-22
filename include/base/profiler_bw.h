@@ -1,5 +1,5 @@
-#ifndef EMBEDDED_PROFILER_H
-#define EMBEDDED_PROFILER_H
+#ifndef PROFILER_BW_H
+#define PROFILER_BW_H
 
 #include <systemc.h>
 #include <memory>
@@ -7,18 +7,17 @@
 #include <iomanip>
 #include "packet/base_packet.h"
 
-// Embedded profiler for SystemC simulation
-// To be included within other modules for function-based profiling
+// Bandwidth profiler with dedicated reporting thread
+// To be used by calling profile_packet() function
 template<typename PacketType>
-SC_MODULE(EmbeddedProfiler) {
-    SC_HAS_PROCESS(EmbeddedProfiler);
-    
+SC_MODULE(ProfilerBW) {
+    SC_HAS_PROCESS(ProfilerBW);
 public:
     // Constructor
-    EmbeddedProfiler(sc_module_name name,
-                     const std::string& profiler_name,
-                     sc_time reporting_period = sc_time(10, SC_MS),
-                     bool debug_enable = false)
+    ProfilerBW(sc_module_name name,
+               const std::string& profiler_name,
+               sc_time reporting_period = sc_time(10, SC_MS),
+               bool debug_enable = false)
         : sc_module(name), m_profiler_name(profiler_name),
           m_reporting_period(reporting_period),
           m_debug_enable(debug_enable),
@@ -28,11 +27,11 @@ public:
           m_current_period_packets(0),
           m_last_report_time(SC_ZERO_TIME) {
         
-        // Start reporting thread
-        SC_THREAD(report_throughput);
+        // Start the reporting thread
+        SC_THREAD(reporting_process);
         
         std::cout << sc_time_stamp() << " | " << m_profiler_name 
-                  << ": Embedded profiler initialized with reporting period " 
+                  << ": Bandwidth profiler initialized with reporting period " 
                   << m_reporting_period << std::endl;
     }
     
@@ -46,6 +45,12 @@ public:
         m_total_packets++;
         m_current_period_bytes += databyte;
         m_current_period_packets++;
+        
+        // Check if it's time to report
+        sc_time current_time = sc_time_stamp();
+        if (current_time - m_last_report_time >= m_reporting_period) {
+            report_current_period();
+        }
         
         if (m_debug_enable) {
             std::cout << sc_time_stamp() << " | " << m_profiler_name 
@@ -61,6 +66,11 @@ public:
         }
     }
     
+    // Manual report trigger (optional)
+    void force_report() {
+        report_current_period();
+    }
+    
     // Get current statistics (for external queries)
     struct ProfileStats {
         unsigned long long total_bytes;
@@ -73,11 +83,6 @@ public:
     ProfileStats get_stats() const {
         return {m_total_bytes, m_total_packets, m_current_period_bytes, 
                 m_current_period_packets, m_last_report_time};
-    }
-    
-    // Manual report trigger (optional)
-    void force_report() {
-        report_current_period();
     }
 
 private:
@@ -93,21 +98,19 @@ private:
     unsigned long long m_current_period_packets;
     sc_time m_last_report_time;
     
-    // Periodic throughput reporting thread
-    void report_throughput() {
-        while (true) {
-            wait(m_reporting_period);
-            report_current_period();
-        }
+    // Periodic reporting process thread (optional - can be disabled)
+    void reporting_process() {
+        // This process is primarily for future extension
+        // For now, periodic reporting is handled in profile_packet()
+        wait(); // Wait indefinitely - this process is inactive
     }
     
     void report_current_period() {
         sc_time current_time = sc_time_stamp();
-        sc_time elapsed_time = current_time - m_last_report_time;
         
-        if (elapsed_time > SC_ZERO_TIME && m_current_period_bytes > 0) {
+        if (m_current_period_bytes > 0) {
             // Calculate throughput in bytes/second
-            double elapsed_seconds = elapsed_time.to_seconds();
+            double elapsed_seconds = m_reporting_period.to_seconds();
             double throughput_bps = m_current_period_bytes / elapsed_seconds;
             double throughput_mbps = throughput_bps / (1024.0 * 1024.0);
             double throughput_pps = m_current_period_packets / elapsed_seconds;
@@ -116,7 +119,7 @@ private:
             std::cout << "\n" << std::string(60, '=') << std::endl;
             std::cout << sc_time_stamp() << " | " << m_profiler_name << " THROUGHPUT REPORT" << std::endl;
             std::cout << std::string(60, '=') << std::endl;
-            std::cout << "  Period: " << elapsed_time << std::endl;
+            std::cout << "  Period: " << m_reporting_period << std::endl;
             std::cout << "  Bytes transferred: " << m_current_period_bytes << std::endl;
             std::cout << "  Packets processed: " << m_current_period_packets << std::endl;
             std::cout << "  Throughput: " << std::fixed << std::setprecision(2) 
@@ -137,6 +140,30 @@ private:
         m_last_report_time = current_time;
     }
     
+    void report_final_summary() {
+        sc_time sim_time = sc_time_stamp();
+        if (m_total_bytes > 0 && sim_time > SC_ZERO_TIME) {
+            double total_seconds = sim_time.to_seconds();
+            double avg_throughput_bps = m_total_bytes / total_seconds;
+            double avg_throughput_mbps = avg_throughput_bps / (1024.0 * 1024.0);
+            double avg_pps = m_total_packets / total_seconds;
+            
+            std::cout << "\n" << std::string(60, '=') << std::endl;
+            std::cout << sc_time_stamp() << " | " << m_profiler_name << " FINAL SUMMARY" << std::endl;
+            std::cout << std::string(60, '=') << std::endl;
+            std::cout << "  Total simulation time: " << sim_time << std::endl;
+            std::cout << "  Total bytes transferred: " << m_total_bytes << std::endl;
+            std::cout << "  Total packets processed: " << m_total_packets << std::endl;
+            std::cout << "  Average throughput: " << std::fixed << std::setprecision(2) 
+                      << avg_throughput_bps << " bytes/sec" << std::endl;
+            std::cout << "  Average throughput: " << std::fixed << std::setprecision(2) 
+                      << avg_throughput_mbps << " MB/sec" << std::endl;
+            std::cout << "  Average packet rate: " << std::fixed << std::setprecision(2) 
+                      << avg_pps << " packets/sec" << std::endl;
+            std::cout << std::string(60, '=') << std::endl;
+        }
+    }
+    
     // Extract databyte from packet - specialized for different packet types
     unsigned int get_packet_databyte(const PacketType& packet) {
         // Try to get databyte attribute from packet
@@ -154,18 +181,6 @@ private:
 };
 
 // Type aliases for common packet types
-using BasePacketEmbeddedProfiler = EmbeddedProfiler<BasePacket>;
-
-// Helper function to create embedded profiler
-template<typename PacketType>
-std::unique_ptr<EmbeddedProfiler<PacketType>> create_embedded_profiler(
-    sc_module_name name,
-    const std::string& profiler_name,
-    sc_time reporting_period = sc_time(10, SC_MS),
-    bool debug_enable = false) {
-    
-    return std::unique_ptr<EmbeddedProfiler<PacketType>>(
-        new EmbeddedProfiler<PacketType>(name, profiler_name, reporting_period, debug_enable));
-}
+using BasePacketProfilerBW = ProfilerBW<BasePacket>;
 
 #endif

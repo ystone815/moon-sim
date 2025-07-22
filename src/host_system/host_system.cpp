@@ -39,9 +39,9 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
             ia_debug
         ));
     
-    // Create function profiler
-    m_profiler = std::unique_ptr<FunctionProfiler<BasePacket>>(
-        new FunctionProfiler<BasePacket>("profiler", "HostSystem_Profiler", sc_time(10, SC_MS), false));
+    // Create bandwidth profiler
+    m_profiler = std::unique_ptr<ProfilerBW<BasePacket>>(
+        new ProfilerBW<BasePacket>("profiler", "HostSystem_Profiler", sc_time(10, SC_MS), false));
     
     // Connect components:
     // TrafficGenerator -> internal_fifo -> IndexAllocator -> profiling_fifo -> profiling_process -> out
