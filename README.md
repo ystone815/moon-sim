@@ -12,16 +12,16 @@ A high-performance, production-ready SystemC-based simulation framework for Syst
 - **Smart Memory Management**: Full `std::shared_ptr` integration for automatic memory safety
 - **High Performance**: 640+ MB/sec throughput with real-time profiling
 - **Index Resource Management**: Simplified minimum-allocation with automatic recycling
-- **Function-based Profiling**: Real-time throughput monitoring without port overhead
+- **SC_MODULE Profiling**: Real-time throughput monitoring with SystemC-compliant architecture
 
 ### Components
 
 #### HostSystem
-- **Encapsulated Architecture**: Contains TrafficGenerator, IndexAllocator, and Function-based Profiler as a unified module
+- **Encapsulated Architecture**: Contains TrafficGenerator, IndexAllocator, and SC_MODULE Profiler as a unified module
 - **Separate Configuration**: Dedicated `host_system_config.json` for modular settings
 - **Index Resource Management**: Simplified minimum-allocation strategy with automatic recycling
 - **PCIe-Style Interface**: Bidirectional communication with downstream/upstream paths
-- **Integrated Profiling**: Built-in function-based throughput profiler with 10ms reporting
+- **Integrated Profiling**: Built-in SC_MODULE throughput profiler with 10ms reporting and dedicated process infrastructure
 
 #### TrafficGenerator
 - **Percentage-Based Controls**: 
@@ -55,13 +55,15 @@ A high-performance, production-ready SystemC-based simulation framework for Syst
 - **Flexible index assignment**: Custom setter functions
 - **Clean Output**: Optional statistics display for focused profiler reporting
 
-#### FunctionProfiler (Template)
+#### FunctionProfiler (Template, SC_MODULE)
+- **SC_MODULE Architecture**: Proper SystemC module with dedicated reporting process infrastructure
 - **Function-based Design**: Direct function calls eliminate port/event overhead
 - **Real-time Monitoring**: Automatic databyte extraction and accumulation
 - **Configurable Reporting**: Periodic throughput reports (default 10ms intervals)
 - **Comprehensive Metrics**: bytes/sec, MB/sec, packets/sec with cumulative totals
 - **Template-based**: Works with any packet type supporting get_attribute()
-- **Performance Optimized**: No SystemC process overhead or FIFO connections
+- **Performance Optimized**: 610+ MB/sec throughput with minimal overhead
+- **Dedicated Process Ready**: Infrastructure for independent reporting thread
 
 ### Advanced Features
 - **Modular JSON Configuration**: Separate config files organized in `config/base/` structure
@@ -187,8 +189,8 @@ The simulator uses separate JSON configuration files organized in `config/base/`
 ┌─────────────────────────────────────────────┐
 │                HostSystem                   │
 │ ┌─────────────────┐ ┌─────────┐ ┌────────┐  │
-│ │ TrafficGenerator│ │IndexAlloc│ │Function│  │
-│ │                 │ │         │ │Profiler│  │
+│ │ TrafficGenerator│ │IndexAlloc│ │SC_MODULE│  │
+│ │                 │ │         │ │Profiler │  │
 │ └─────────────────┘ └─────────┘ └────────┘  │
 └─────────────────────────────────────────────┘
            │                ▲
@@ -212,10 +214,11 @@ The simulator uses separate JSON configuration files organized in `config/base/`
 ```
 
 ### Key Features
-- **HostSystem**: Encapsulated TrafficGenerator + IndexAllocator + FunctionProfiler
+- **HostSystem**: Encapsulated TrafficGenerator + IndexAllocator + SC_MODULE FunctionProfiler
 - **PCIe-Style**: Bidirectional DelayLines for realistic latency
 - **Index Management**: Simplified minimum-allocation with out-of-order recycling
-- **Function-based Profiling**: Real-time throughput monitoring integrated within datapath
+- **SC_MODULE Profiling**: SystemC-compliant profiler with dedicated process infrastructure
+- **Function-based Interface**: Real-time throughput monitoring integrated within datapath
 - **Modular Config**: Separate JSON files per component in `config/base/`
 - **Smart Directory Handling**: Automatic log directory creation for deployment
 
@@ -224,12 +227,12 @@ The simulator uses separate JSON configuration files organized in `config/base/`
 ### Throughput Results
 | Configuration | Throughput | Notes |
 |---------------|------------|-------|
-| **Function-based Profiler** | **640+ MB/sec** | Real-time profiling with 610.35 MB/sec sustained |
-| **Simulation Performance** | **48,000-55,000 tps** | 1M transactions in ~2 seconds |
-| **Profiler Overhead** | **Minimal** | Function calls vs. port-based communication |
+| **SC_MODULE FunctionProfiler** | **640+ MB/sec** | Real-time profiling with 610.35 MB/sec sustained |
+| **Simulation Performance** | **48,000-50,000 tps** | 1M transactions in ~2 seconds |
+| **Profiler Overhead** | **Minimal** | SystemC-compliant with dedicated process infrastructure |
 | **Index Pool (100 entries)** | **No blocking** | Minimum allocation strategy |
 | **Debug Disabled** | **Optimal** | Clean profiler-only output |
-| **Parameter Sweeps** | **39,000-55,000 tps** | Consistent across write ratio variations |
+| **Parameter Sweeps** | **48,473-50,000 tps** | Consistent across write ratio variations (latest test) |
 
 ### Memory Configurations
 - **Small (256 entries)**: Basic testing
@@ -290,11 +293,12 @@ This simulator follows modern C++ and SystemC best practices:
 
 ## 🚀 Performance Features
 
-- **Function-based Profiling**: 640+ MB/sec throughput monitoring without port overhead
+- **SC_MODULE Profiling**: 640+ MB/sec throughput monitoring with SystemC-compliant architecture
 - **PCIe-Style Architecture**: Realistic bidirectional interconnect modeling
 - **Simplified Index Management**: Minimum-allocation strategy with out-of-order recycling
 - **Deployment Ready**: Automatic log directory creation for production environments
-- **Low Overhead**: Direct function calls eliminate SystemC event processing
+- **Dedicated Process Infrastructure**: Ready for independent reporting thread implementation
+- **Low Overhead**: Direct function calls with minimal SystemC process overhead
 - **Scalable Design**: Template-based components with C++11 compatibility
 - **Memory Efficient**: Smart pointer management with automatic recycling
 - **Real-time Monitoring**: 10ms periodic reporting with comprehensive metrics
