@@ -24,6 +24,14 @@ SC_MODULE(HostSystem) {
     // Constructor with config file path and optional traffic generator config directory
     HostSystem(sc_module_name name, const std::string& config_file_path = "config/base/host_system_config.json");
 
+public:
+    // Access to internal profiler for force report
+    void force_profiler_report() {
+        if (m_profiler) {
+            m_profiler->force_report();
+        }
+    }
+
 private:
     // Internal components
     std::unique_ptr<TrafficGenerator> m_traffic_generator;

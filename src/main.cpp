@@ -5,6 +5,7 @@
 #include "packet/generic_packet.h" // Include GenericPacket
 #include "base/delay_line.h"
 #include "base/delay_line_databyte.h"
+#include "base/profiler_latency.h"
 #include "common/common_utils.h"
 #include "common/json_config.h"
 #include <memory> // For std::unique_ptr
@@ -72,32 +73,88 @@ int sc_main(int argc, char* argv[]) {
 
     // Always redirect cout to the log file
     std::ofstream log_file;
+    std::streambuf* cout_sbuf = nullptr; // Initialize to null
     log_file.open(log_filename);
-    std::streambuf* cout_sbuf = std::cout.rdbuf(); // Save original streambuf
-    std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
+    if (!log_file.is_open()) {
+        std::cerr << "Warning: Could not open log file " << log_filename << std::endl;
+        // Continue without redirection if file can't be opened
+    } else {
+        cout_sbuf = std::cout.rdbuf(); // Save original streambuf
+        std::cout.rdbuf(log_file.rdbuf()); // Redirect cout to log_file
+    }
 
     // Create HostSystem (contains TrafficGenerator, IndexAllocator, and embedded Profiler) - uses config from specified directory
     HostSystem host_system("host_system", config_dir + "host_system_config.json");
     DelayLine<BasePacket> downstream_delay("downstream_delay", sc_time(delay_ns, SC_NS), dl_debug); // HostSystem -> Memory
     DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
     Memory<BasePacket, int, 65536> memory("memory", mem_debug);
+    
+    // Create latency profiler for measuring request-to-response latency
+    ProfilerLatency<BasePacket> latency_profiler("latency_profiler", "SystemLatency", sc_time(50, SC_MS), false);
+
+    // Define latency monitoring module
+    SC_MODULE(LatencyMonitor) {
+        SC_HAS_PROCESS(LatencyMonitor);
+        
+        sc_fifo_in<std::shared_ptr<BasePacket>> downstream_monitor;
+        sc_fifo_out<std::shared_ptr<BasePacket>> downstream_out;
+        sc_fifo_in<std::shared_ptr<BasePacket>> upstream_monitor; 
+        sc_fifo_out<std::shared_ptr<BasePacket>> upstream_out;
+        ProfilerLatency<BasePacket>* profiler;
+        
+        LatencyMonitor(sc_module_name name, ProfilerLatency<BasePacket>* prof) 
+            : sc_module(name), profiler(prof) {
+            SC_THREAD(monitor_downstream);
+            SC_THREAD(monitor_upstream);
+        }
+        
+        void monitor_downstream() {
+            while (true) {
+                auto packet = downstream_monitor.read();
+                if (packet) {
+                    profiler->profile_request(packet);
+                    downstream_out.write(packet);
+                }
+            }
+        }
+        
+        void monitor_upstream() {
+            while (true) {
+                auto packet = upstream_monitor.read();
+                if (packet) {
+                    profiler->profile_response(packet);
+                    upstream_out.write(packet);
+                }
+            }
+        }
+    };
+    
+    LatencyMonitor latency_monitor("latency_monitor", &latency_profiler);
 
     sc_fifo<std::shared_ptr<BasePacket>> fifo_host_downstream(2);  // HostSystem -> DownstreamDelay
     sc_fifo<std::shared_ptr<BasePacket>> fifo_downstream_mem(2);  // DownstreamDelay -> Memory
     sc_fifo<std::shared_ptr<BasePacket>> fifo_mem_upstream(2);    // Memory -> UpstreamDelay
     sc_fifo<std::shared_ptr<BasePacket>> fifo_upstream_host(2);   // UpstreamDelay -> HostSystem
+    
+    // Additional FIFOs for latency monitoring
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_downstream_monitor(2);
+    sc_fifo<std::shared_ptr<BasePacket>> fifo_upstream_monitor(2);
 
-    // PCIe-style bidirectional connections with embedded profiler:
-    // Downstream path: HostSystem(with profiler) -> DownstreamDelay -> Memory
+    // PCIe-style bidirectional connections with latency monitoring:
+    // Downstream path: HostSystem -> LatencyMonitor(request) -> DownstreamDelay -> Memory
     host_system.out(fifo_host_downstream);
-    downstream_delay.in(fifo_host_downstream);
+    latency_monitor.downstream_monitor(fifo_host_downstream);
+    latency_monitor.downstream_out(fifo_downstream_monitor);
+    downstream_delay.in(fifo_downstream_monitor);
     downstream_delay.out(fifo_downstream_mem);
     memory.in(fifo_downstream_mem);
     
-    // Upstream path: Memory -> UpstreamDelay -> HostSystem (for index release)
+    // Upstream path: Memory -> UpstreamDelay -> LatencyMonitor(response) -> HostSystem
     memory.release_out(fifo_mem_upstream);
     upstream_delay.in(fifo_mem_upstream);
-    upstream_delay.out(fifo_upstream_host);
+    upstream_delay.out(fifo_upstream_monitor);
+    latency_monitor.upstream_monitor(fifo_upstream_monitor);
+    latency_monitor.upstream_out(fifo_upstream_host);
     host_system.release_in(fifo_upstream_host);
 
     std::cout << "Starting simulation..." << std::endl;
@@ -105,6 +162,12 @@ int sc_main(int argc, char* argv[]) {
     // Record start time for performance measurement
     auto start_time = std::chrono::high_resolution_clock::now();
     sc_start();
+    
+    // Force final reports from both profilers
+    latency_profiler.force_report();      // ProfilerLatency report  
+    host_system.force_profiler_report();  // ProfilerBW report
+    std::cout.flush(); // Ensure profiler reports are written to file
+    
     auto end_time = std::chrono::high_resolution_clock::now();
     
     // Calculate performance metrics
@@ -120,8 +183,10 @@ int sc_main(int argc, char* argv[]) {
     std::cout << "Throughput: " << static_cast<int>(transactions_per_second) << " transactions/second" << std::endl;
 
     // Restore cout to its original streambuf
-    std::cout.rdbuf(cout_sbuf);
-    log_file.close();
+    if (log_file.is_open() && cout_sbuf) {
+        std::cout.rdbuf(cout_sbuf);
+        log_file.close();
+    }
 
     return 0;
 }

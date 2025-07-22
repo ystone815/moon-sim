@@ -66,9 +66,35 @@ public:
         }
     }
     
-    // Manual report trigger (optional)
+    // Manual report trigger (force final report regardless of current period bytes)
     void force_report() {
-        report_current_period();
+        sc_time current_time = sc_time_stamp();
+        
+        
+        // Calculate overall statistics  
+        // Always report if we have processed any packets (even with 0 bytes)
+        if (m_total_packets > 0 && current_time > SC_ZERO_TIME) {
+            double elapsed_seconds = current_time.to_seconds();
+            double avg_throughput_bps = m_total_bytes / elapsed_seconds;
+            double avg_throughput_mbps = avg_throughput_bps / (1024.0 * 1024.0);
+            double avg_pps = m_total_packets / elapsed_seconds;
+            
+            // Report overall throughput
+            std::cout << "\n" << std::string(60, '=') << std::endl;
+            std::cout << sc_time_stamp() << " | " << m_profiler_name << " FINAL THROUGHPUT REPORT" << std::endl;
+            std::cout << std::string(60, '=') << std::endl;
+            std::cout << "  Total simulation time: " << current_time << std::endl;
+            std::cout << "  Total bytes transferred: " << m_total_bytes << std::endl;
+            std::cout << "  Total packets processed: " << m_total_packets << std::endl;
+            std::cout << "  Average throughput: " << std::fixed << std::setprecision(2) 
+                      << avg_throughput_bps << " bytes/sec" << std::endl;
+            std::cout << "  Average throughput: " << std::fixed << std::setprecision(2) 
+                      << avg_throughput_mbps << " MB/sec" << std::endl;
+            std::cout << "  Average packet rate: " << std::fixed << std::setprecision(2) 
+                      << avg_pps << " packets/sec" << std::endl;
+            std::cout << std::string(60, '=') << std::endl;
+            std::cout.flush(); // Ensure output is written to file
+        }
     }
     
     // Get current statistics (for external queries)

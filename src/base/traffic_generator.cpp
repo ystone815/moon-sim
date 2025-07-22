@@ -78,7 +78,7 @@ void TrafficGenerator::run() {
             }
         } else {
             p->command = Command::READ;
-            p->databyte = 0; // databyte is not relevant for READ, set to 0 or default
+            p->databyte = m_databyte_value; // Use same databyte as WRITE for throughput measurement
             out.write(p);
             if (m_debug_enable) {
                 print_packet_log(std::cout, "TrafficGenerator", *p, "Sent READ");
