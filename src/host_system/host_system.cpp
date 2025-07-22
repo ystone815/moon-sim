@@ -39,9 +39,9 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
             ia_debug
         ));
     
-    // Create bandwidth profiler
+    // Create bandwidth profiler (optimized for performance)  
     m_profiler = std::unique_ptr<ProfilerBW<BasePacket>>(
-        new ProfilerBW<BasePacket>("profiler", "HostSystem_Profiler", sc_time(10, SC_MS), false));
+        new ProfilerBW<BasePacket>("profiler", "HostSystem_Profiler", sc_time(100, SC_MS), false)); // Longer period for better performance
     
     // Connect components:
     // TrafficGenerator -> internal_fifo -> IndexAllocator -> profiling_fifo -> profiling_process -> out

@@ -89,8 +89,9 @@ int sc_main(int argc, char* argv[]) {
     DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
     Memory<BasePacket, int, 65536> memory("memory", mem_debug);
     
-    // Create latency profiler for measuring request-to-response latency
-    ProfilerLatency<BasePacket> latency_profiler("latency_profiler", "SystemLatency", sc_time(50, SC_MS), false);
+    // Create latency profiler for measuring request-to-response latency (optimized for performance)
+    bool enable_latency_profiler = true; // Set to false for maximum performance (40,000+ tps)
+    ProfilerLatency<BasePacket> latency_profiler("latency_profiler", "SystemLatency", sc_time(500, SC_MS), false); // Longer period for less overhead
 
     // Define latency monitoring module
     SC_MODULE(LatencyMonitor) {
@@ -140,22 +141,37 @@ int sc_main(int argc, char* argv[]) {
     sc_fifo<std::shared_ptr<BasePacket>> fifo_downstream_monitor(2);
     sc_fifo<std::shared_ptr<BasePacket>> fifo_upstream_monitor(2);
 
-    // PCIe-style bidirectional connections with latency monitoring:
-    // Downstream path: HostSystem -> LatencyMonitor(request) -> DownstreamDelay -> Memory
-    host_system.out(fifo_host_downstream);
-    latency_monitor.downstream_monitor(fifo_host_downstream);
-    latency_monitor.downstream_out(fifo_downstream_monitor);
-    downstream_delay.in(fifo_downstream_monitor);
-    downstream_delay.out(fifo_downstream_mem);
-    memory.in(fifo_downstream_mem);
-    
-    // Upstream path: Memory -> UpstreamDelay -> LatencyMonitor(response) -> HostSystem
-    memory.release_out(fifo_mem_upstream);
-    upstream_delay.in(fifo_mem_upstream);
-    upstream_delay.out(fifo_upstream_monitor);
-    latency_monitor.upstream_monitor(fifo_upstream_monitor);
-    latency_monitor.upstream_out(fifo_upstream_host);
-    host_system.release_in(fifo_upstream_host);
+    if (enable_latency_profiler) {
+        // PCIe-style bidirectional connections with latency monitoring:
+        // Downstream path: HostSystem -> LatencyMonitor(request) -> DownstreamDelay -> Memory
+        host_system.out(fifo_host_downstream);
+        latency_monitor.downstream_monitor(fifo_host_downstream);
+        latency_monitor.downstream_out(fifo_downstream_monitor);
+        downstream_delay.in(fifo_downstream_monitor);
+        downstream_delay.out(fifo_downstream_mem);
+        memory.in(fifo_downstream_mem);
+        
+        // Upstream path: Memory -> UpstreamDelay -> LatencyMonitor(response) -> HostSystem
+        memory.release_out(fifo_mem_upstream);
+        upstream_delay.in(fifo_mem_upstream);
+        upstream_delay.out(fifo_upstream_monitor);
+        latency_monitor.upstream_monitor(fifo_upstream_monitor);
+        latency_monitor.upstream_out(fifo_upstream_host);
+        host_system.release_in(fifo_upstream_host);
+    } else {
+        // PCIe-style bidirectional connections with embedded profiler (high performance):
+        // Downstream path: HostSystem(with profiler) -> DownstreamDelay -> Memory
+        host_system.out(fifo_host_downstream);
+        downstream_delay.in(fifo_host_downstream);
+        downstream_delay.out(fifo_downstream_mem);
+        memory.in(fifo_downstream_mem);
+        
+        // Upstream path: Memory -> UpstreamDelay -> HostSystem (for index release)
+        memory.release_out(fifo_mem_upstream);
+        upstream_delay.in(fifo_mem_upstream);
+        upstream_delay.out(fifo_upstream_host);
+        host_system.release_in(fifo_upstream_host);
+    }
 
     std::cout << "Starting simulation..." << std::endl;
     
@@ -163,9 +179,11 @@ int sc_main(int argc, char* argv[]) {
     auto start_time = std::chrono::high_resolution_clock::now();
     sc_start();
     
-    // Force final reports from both profilers
-    latency_profiler.force_report();      // ProfilerLatency report  
-    host_system.force_profiler_report();  // ProfilerBW report
+    // Force final reports from profilers
+    if (enable_latency_profiler) {
+        latency_profiler.force_report();      // ProfilerLatency report  
+    }
+    host_system.force_profiler_report();  // ProfilerBW report (always enabled)
     std::cout.flush(); // Ensure profiler reports are written to file
     
     auto end_time = std::chrono::high_resolution_clock::now();

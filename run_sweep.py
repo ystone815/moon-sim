@@ -38,7 +38,6 @@ class SweepRunner:
         self.batch_with_time = f"{timestamp}_{self.batch_name}"
         
         # Setup directories
-        self.sweep_config_dir = Path(f"temp/sweep_configs/{self.batch_with_time}")
         self.sweep_results_dir = Path(f"regression_runs/{self.batch_with_time}")
         
         # Results tracking
@@ -66,7 +65,6 @@ class SweepRunner:
         print(f"{Colors.CYAN}========================================{Colors.NC}")
         print(f"{Colors.BLUE}Sweep Config: {self.sweep_config_file}{Colors.NC}")
         print(f"{Colors.BLUE}Batch Name: {self.batch_with_time}{Colors.NC}")
-        print(f"{Colors.BLUE}Config Directory: {self.sweep_config_dir}{Colors.NC}")
         print(f"{Colors.BLUE}Results Directory: {self.sweep_results_dir}{Colors.NC}")
         print(f"{Colors.CYAN}========================================{Colors.NC}")
         
@@ -100,12 +98,10 @@ class SweepRunner:
         """Generate all test case configurations"""
         print(f"{Colors.YELLOW}Generating test case configurations...{Colors.NC}")
         
-        # Create directories
-        self.sweep_config_dir.mkdir(parents=True, exist_ok=True)
+        # Create main results directory
         self.sweep_results_dir.mkdir(parents=True, exist_ok=True)
         
-        # Copy original sweep config to both directories
-        shutil.copy2(self.sweep_config_file, self.sweep_config_dir)
+        # Copy original sweep config to results directory
         shutil.copy2(self.sweep_config_file, self.sweep_results_dir)
         
         # Generate test cases
@@ -117,7 +113,7 @@ class SweepRunner:
         while current_value <= end_value:
             tc_count += 1
             tc_name = f"TC{tc_count:03d}"
-            tc_config_dir = self.sweep_config_dir / tc_name
+            tc_config_dir = self.sweep_results_dir / tc_name
             
             print(f"  {tc_name}: {self.sweep_config['parameter']}={current_value}")
             
@@ -140,7 +136,7 @@ class SweepRunner:
             
             current_value += step_value
             
-        print(f"{Colors.GREEN}Generated {tc_count} test case configurations in {self.sweep_config_dir}{Colors.NC}")
+        print(f"{Colors.GREEN}Generated {tc_count} test case configurations in {self.sweep_results_dir}{Colors.NC}")
         print("")
         
         return tc_count
@@ -195,12 +191,11 @@ Modified File: {self.sweep_config['config_file']}
     def run_test_case(self, tc_number, value):
         """Run a single test case"""
         tc_name = f"TC{tc_number:03d}"
-        tc_config_dir = self.sweep_config_dir / tc_name
+        tc_config_dir = self.sweep_results_dir / tc_name
         tc_results_dir = self.sweep_results_dir / tc_name
         
         print(f"{Colors.BLUE}========================================{Colors.NC}")
         print(f"{Colors.BLUE}Running {tc_name}: {self.sweep_config['parameter']}={value}{Colors.NC}")
-        print(f"{Colors.BLUE}Config: {tc_config_dir}{Colors.NC}")
         print(f"{Colors.BLUE}Results: {tc_results_dir}{Colors.NC}")
         print(f"{Colors.BLUE}========================================{Colors.NC}")
         
@@ -208,12 +203,6 @@ Modified File: {self.sweep_config['config_file']}
         if not tc_config_dir.exists():
             print(f"{Colors.RED}Error: Test case config directory '{tc_config_dir}' not found{Colors.NC}")
             return False
-            
-        # Create results directory
-        tc_results_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Copy config to results directory for reference
-        shutil.copytree(tc_config_dir, tc_results_dir, dirs_exist_ok=True)
         
         # Clear existing logs
         log_files = list(Path("log").glob("simulation_*.log"))
@@ -238,10 +227,10 @@ Modified File: {self.sweep_config['config_file']}
                 # Move logs to results directory
                 log_files = list(Path("log").glob("simulation_*.log"))
                 for log_file in log_files:
-                    shutil.move(str(log_file), tc_results_dir)
+                    shutil.move(str(log_file), tc_config_dir)
                 
                 # Extract performance metrics
-                throughput, sim_time = self.extract_performance_metrics(tc_results_dir)
+                throughput, sim_time = self.extract_performance_metrics(tc_config_dir)
                 if throughput:
                     print(f"{Colors.YELLOW}Performance: {throughput} tps, {sim_time} ms{Colors.NC}")
                 
@@ -249,7 +238,7 @@ Modified File: {self.sweep_config['config_file']}
                 self.results.append(f"{tc_name},{value},{throughput},{sim_time},PASSED")
                 
                 # Create test case summary
-                self.create_tc_result(tc_results_dir, tc_name, value, "PASSED", duration)
+                self.create_tc_result(tc_config_dir, tc_name, value, "PASSED", duration)
                 
                 return True
                 
@@ -260,17 +249,17 @@ Modified File: {self.sweep_config['config_file']}
                 # Move logs even on failure
                 log_files = list(Path("log").glob("simulation_*.log"))
                 for log_file in log_files:
-                    shutil.move(str(log_file), tc_results_dir)
+                    shutil.move(str(log_file), tc_config_dir)
                 
                 self.results.append(f"{tc_name},{value},0,0,FAILED")
-                self.create_tc_result(tc_results_dir, tc_name, value, "FAILED", duration)
+                self.create_tc_result(tc_config_dir, tc_name, value, "FAILED", duration)
                 
                 return False
                 
         except subprocess.TimeoutExpired:
             print(f"{Colors.RED}✗ {tc_name} TIMEOUT{Colors.NC}")
             self.results.append(f"{tc_name},{value},0,0,TIMEOUT")
-            self.create_tc_result(tc_results_dir, tc_name, value, "TIMEOUT", 30)
+            self.create_tc_result(tc_config_dir, tc_name, value, "TIMEOUT", 30)
             return False
             
     def extract_performance_metrics(self, tc_results_dir):
@@ -307,7 +296,6 @@ Batch: {self.batch_with_time}
 Status: {status}
 Duration: {duration}s
 Timestamp: {datetime.now()}
-Config: {self.sweep_config_dir / tc_name}
 Results: {tc_results_dir}
 """
         with open(tc_results_dir / "TC_RESULT.txt", 'w') as f:
@@ -375,7 +363,6 @@ Total Test Cases: {self.passed + self.failed}
 Passed: {self.passed}
 Failed: {self.failed}
 
-Config Directory: {self.sweep_config_dir}
 Results Directory: {self.sweep_results_dir}
 
 Test Case Results:
@@ -407,16 +394,16 @@ Parameter vs Performance:
 # Generated: {datetime.now()}
 
 echo "Reproducing sweep: {self.batch_with_time}"
-echo "Config directory: {self.sweep_config_dir}"
+echo "Using regression results directory: {self.sweep_results_dir}"
 
-# Run individual test cases
+# Run individual test cases using configs from regression results
 """
 
         tc_number = 1
         current_value = self.sweep_config['start']
         while current_value <= self.sweep_config['end']:
             tc_name = f"TC{tc_number:03d}"
-            script_content += f"./sim {self.sweep_config_dir}/{tc_name}  # {self.sweep_config['parameter']}={current_value}\n"
+            script_content += f"./sim {self.sweep_results_dir}/{tc_name}  # {self.sweep_config['parameter']}={current_value}\n"
             tc_number += 1
             current_value += self.sweep_config['step']
             
@@ -450,7 +437,6 @@ echo "Config directory: {self.sweep_config_dir}"
         print(f"{Colors.CYAN}========================================{Colors.NC}")
         print(f"{Colors.CYAN}Sweep Completed{Colors.NC}")
         print(f"{Colors.CYAN}========================================{Colors.NC}")
-        print(f"{Colors.YELLOW}Config Directory: {self.sweep_config_dir}{Colors.NC}")
         print(f"{Colors.YELLOW}Results Directory: {self.sweep_results_dir}{Colors.NC}")
         print(f"{Colors.YELLOW}CSV Data: {self.sweep_results_dir}/sweep_results.csv{Colors.NC}")
         print(f"{Colors.YELLOW}Summary: {self.sweep_results_dir}/sweep_summary.txt{Colors.NC}")
