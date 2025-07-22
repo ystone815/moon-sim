@@ -5,6 +5,8 @@
 #include <memory>
 #include <array>
 #include <functional>
+#include <random>
+#include <algorithm>
 #include "common/error_handling.h"
 
 // Memory entry structure - can be customized per use case
@@ -30,6 +32,12 @@ SC_MODULE(Memory) {
     static constexpr size_t MEMORY_SIZE = MemorySize;
     const bool m_debug_enable;
     
+    // Delay parameters
+    const double m_min_delay_ns;
+    const double m_max_delay_ns;
+    const double m_mean_delay_ns;
+    const double m_stddev_delay_ns;
+    
     // Accessor functions for packet attributes
     std::function<int(const PacketType&)> m_get_command;
     std::function<int(const PacketType&)> m_get_address;
@@ -37,6 +45,10 @@ SC_MODULE(Memory) {
     std::function<unsigned char(const PacketType&)> m_get_databyte;
     std::function<void(PacketType&, DataType)> m_set_data;
     std::function<void(PacketType&, unsigned char)> m_set_databyte;
+    
+    // Random number generation for normal distribution
+    mutable std::mt19937 m_rng;
+    mutable std::normal_distribution<double> m_normal_dist;
     
     // Memory operation types (customizable)
     enum class MemoryCommand {
@@ -67,6 +79,12 @@ SC_MODULE(Memory) {
                 continue;
             }
             
+            // Apply memory access delay
+            double delay_ns = generate_delay();
+            if (delay_ns > 0.0) {
+                wait(delay_ns, SC_NS);
+            }
+            
             // Process memory operation
             if (command == static_cast<int>(MemoryCommand::WRITE)) {
                 DataType data = m_get_data(*packet);
@@ -78,7 +96,7 @@ SC_MODULE(Memory) {
                 
                 if (m_debug_enable) {
                     std::cout << sc_time_stamp() << " | Memory: Received WRITE, " 
-                              << *packet << std::endl;
+                              << *packet << " (delay=" << std::fixed << std::setprecision(1) << delay_ns << "ns)" << std::endl;
                 }
                           
             } else if (command == static_cast<int>(MemoryCommand::READ)) {
@@ -93,7 +111,7 @@ SC_MODULE(Memory) {
                 
                 if (m_debug_enable) {
                     std::cout << sc_time_stamp() << " | Memory: Received READ, " 
-                              << *packet << std::endl;
+                              << *packet << " (delay=" << std::fixed << std::setprecision(1) << delay_ns << "ns)" << std::endl;
                 }
             } else {
                 SOC_SIM_ERROR("Memory", soc_sim::error::codes::INVALID_PACKET_TYPE,
@@ -113,26 +131,47 @@ SC_MODULE(Memory) {
            std::function<unsigned char(const PacketType&)> get_databyte,
            std::function<void(PacketType&, DataType)> set_data,
            std::function<void(PacketType&, unsigned char)> set_databyte,
-           bool debug_enable = false)
+           bool debug_enable = false,
+           double min_delay_ns = 0.0,
+           double max_delay_ns = 0.0)
         : sc_module(name),
           m_debug_enable(debug_enable),
+          m_min_delay_ns(min_delay_ns),
+          m_max_delay_ns(max_delay_ns),
+          m_mean_delay_ns((min_delay_ns + max_delay_ns) / 2.0),
+          m_stddev_delay_ns((max_delay_ns > min_delay_ns) ? (max_delay_ns - min_delay_ns) / 6.0 : 0.0),
           m_get_command(get_command),
           m_get_address(get_address),
           m_get_data(get_data),
           m_get_databyte(get_databyte),
           m_set_data(set_data),
-          m_set_databyte(set_databyte) {
+          m_set_databyte(set_databyte),
+          m_rng(std::random_device{}()),
+          m_normal_dist(0.0, 1.0) {
         
         // Initialize memory
         for (size_t i = 0; i < MEMORY_SIZE; ++i) {
             mem[i] = MemoryEntry<DataType>();
         }
         
+        if (m_debug_enable && m_max_delay_ns > 0.0) {
+            std::cout << "0 s | " << basename() << ": Memory delay range: " 
+                      << m_min_delay_ns << " - " << m_max_delay_ns << " ns (normal distribution)" << std::endl;
+        }
+        
         SC_THREAD(run);
     }
     
     // Constructor for types with standard accessor methods
-    Memory(sc_module_name name, bool debug_enable = false) : sc_module(name), m_debug_enable(debug_enable) {
+    Memory(sc_module_name name, bool debug_enable = false, double min_delay_ns = 0.0, double max_delay_ns = 0.0) 
+        : sc_module(name), 
+          m_debug_enable(debug_enable),
+          m_min_delay_ns(min_delay_ns),
+          m_max_delay_ns(max_delay_ns),
+          m_mean_delay_ns((min_delay_ns + max_delay_ns) / 2.0),
+          m_stddev_delay_ns((max_delay_ns > min_delay_ns) ? (max_delay_ns - min_delay_ns) / 6.0 : 0.0),
+          m_rng(std::random_device{}()),
+          m_normal_dist(0.0, 1.0) {
         // Set up default accessors for types with standard methods
         m_get_command = [](const PacketType& p) { return static_cast<int>(p.get_command()); };
         m_get_address = [](const PacketType& p) { return p.get_address(); };
@@ -144,6 +183,11 @@ SC_MODULE(Memory) {
         // Initialize memory
         for (size_t i = 0; i < MEMORY_SIZE; ++i) {
             mem[i] = MemoryEntry<DataType>();
+        }
+        
+        if (m_debug_enable && m_max_delay_ns > 0.0) {
+            std::cout << "0 s | " << basename() << ": Memory delay range: " 
+                      << m_min_delay_ns << " - " << m_max_delay_ns << " ns (normal distribution)" << std::endl;
         }
         
         SC_THREAD(run);
@@ -173,6 +217,17 @@ SC_MODULE(Memory) {
 
 private:
     std::array<MemoryEntry<DataType>, MEMORY_SIZE> mem;
+    
+    // Generate delay using normal distribution
+    double generate_delay() const {
+        if (m_max_delay_ns <= 0.0 || m_max_delay_ns <= m_min_delay_ns) {
+            return 0.0;  // No delay
+        }
+        
+        // Generate normal distribution sample and clamp to [min, max]
+        double sample = m_normal_dist(m_rng) * m_stddev_delay_ns + m_mean_delay_ns;
+        return std::max(m_min_delay_ns, std::min(m_max_delay_ns, sample));
+    }
 };
 
 // Type aliases for common configurations

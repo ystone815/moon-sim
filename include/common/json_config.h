@@ -29,6 +29,18 @@ public:
         return default_value;
     }
     
+    double get_double(const std::string& key, double default_value = 0.0) const {
+        auto it = config_map.find(key);
+        if (it != config_map.end()) {
+            return std::stod(it->second);
+        }
+        return default_value;
+    }
+    
+    bool has_key(const std::string& key) const {
+        return config_map.find(key) != config_map.end();
+    }
+    
     std::string get_string(const std::string& key, const std::string& default_value = "") const {
         auto it = config_map.find(key);
         if (it != config_map.end()) {

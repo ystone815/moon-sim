@@ -87,7 +87,11 @@ int sc_main(int argc, char* argv[]) {
     HostSystem host_system("host_system", config_dir + "host_system_config.json");
     DelayLine<BasePacket> downstream_delay("downstream_delay", sc_time(delay_ns, SC_NS), dl_debug); // HostSystem -> Memory
     DelayLine<BasePacket> upstream_delay("upstream_delay", sc_time(delay_ns, SC_NS), dl_debug);     // Memory -> HostSystem
-    Memory<BasePacket, int, 65536> memory("memory", mem_debug);
+    // Memory delay parameters from config
+    double mem_min_delay = config.get_double("min_delay_ns", 0.0);
+    double mem_max_delay = config.get_double("max_delay_ns", 0.0);
+    
+    Memory<BasePacket, int, 65536> memory("memory", mem_debug, mem_min_delay, mem_max_delay);
     
     // Create latency profiler for measuring request-to-response latency (optimized for performance)
     bool enable_latency_profiler = true; // Set to false for maximum performance (40,000+ tps)

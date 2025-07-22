@@ -6,7 +6,9 @@
     },
     "memory": {
       "size": 256,
-      "debug_enable": false
+      "debug_enable": false,
+      "min_delay_ns": 50.0,
+      "max_delay_ns": 150.0
     }
   },
   "logging": {
