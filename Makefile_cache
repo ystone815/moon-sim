@@ -1,0 +1,52 @@
+# Makefile for SystemC Cache Hierarchy Test
+# Requires SYSTEMC_HOME environment variable
+
+# Check if SYSTEMC_HOME is set
+ifndef SYSTEMC_HOME
+$(error SYSTEMC_HOME is not set. Please set it to your SystemC installation directory)
+endif
+
+# Compiler and flags
+CXX = g++
+CXXFLAGS = -std=c++11 -I$(SYSTEMC_HOME)/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet
+LDFLAGS = -L$(SYSTEMC_HOME)/lib-linux64 -lsystemc -Wl,-rpath=$(SYSTEMC_HOME)/lib-linux64
+
+# Directories
+SRC_DIR = src
+OBJ_DIR = obj
+INCLUDE_DIR = include
+
+# Source files
+CACHE_SRCS = $(SRC_DIR)/main_cache_test.cpp $(SRC_DIR)/base/traffic_generator.cpp
+CACHE_OBJS = $(CACHE_SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+# Target executable
+CACHE_TARGET = cache_test
+
+# Default target
+all: $(CACHE_TARGET)
+
+# Create cache test executable
+$(CACHE_TARGET): $(CACHE_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Object file compilation
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $<
+
+# Clean target
+clean:
+	rm -f $(CACHE_TARGET) $(CACHE_OBJS)
+	rm -rf $(OBJ_DIR)
+
+# Create necessary directories
+dirs:
+	@mkdir -p $(OBJ_DIR)/base
+	@mkdir -p $(OBJ_DIR)/host_system
+
+# Phony targets
+.PHONY: all clean dirs
+
+# Dependencies
+$(CACHE_OBJS): | dirs

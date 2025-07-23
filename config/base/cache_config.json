@@ -1,0 +1,38 @@
+{
+  "l1_cache": {
+    "_comment_cache": "L1 Cache Configuration - 32KB, 4-way set-associative",
+    "replacement_policy": "LRU",
+    "write_policy": "WRITE_BACK", 
+    "allocation_policy": "WRITE_ALLOCATE",
+    "hit_latency_ns": 1,
+    "miss_latency_ns": 3,
+    "debug_enable": false
+  },
+  "l2_cache": {
+    "_comment_cache": "L2 Cache Configuration - 256KB, 8-way set-associative", 
+    "replacement_policy": "LRU",
+    "write_policy": "WRITE_BACK",
+    "allocation_policy": "WRITE_ALLOCATE", 
+    "hit_latency_ns": 10,
+    "miss_latency_ns": 20,
+    "debug_enable": false
+  },
+  "dram_controller": {
+    "_comment_dram": "DRAM Controller Configuration - DDR4-3200 timing",
+    "tCL_ns": 14,
+    "tRCD_ns": 14,
+    "tRP_ns": 14,
+    "tRAS_ns": 32,
+    "tWR_ns": 15,
+    "tRFC_ns": 350,
+    "tREFI_ns": 7800,
+    "tBurst_ns": 4,
+    "page_size": 1024,
+    "burst_length": 8,
+    "auto_precharge": true,
+    "refresh_enable": true,
+    "debug_enable": false
+  },
+  "description": "Cache hierarchy and DRAM controller configuration",
+  "version": "1.0"
+}

@@ -1,0 +1,71 @@
+# Makefile for SystemC Web Monitoring Test
+# Requires SYSTEMC_HOME environment variable
+
+# Check if SYSTEMC_HOME is set
+ifndef SYSTEMC_HOME
+$(error SYSTEMC_HOME is not set. Please set it to your SystemC installation directory)
+endif
+
+# Compiler and flags
+CXX = g++
+CXXFLAGS = -std=c++11 -I$(SYSTEMC_HOME)/include -Iinclude -Iinclude/base -Iinclude/host_system -Iinclude/common -Iinclude/packet
+LDFLAGS = -L$(SYSTEMC_HOME)/lib-linux64 -lsystemc -Wl,-rpath=$(SYSTEMC_HOME)/lib-linux64
+
+# Directories
+SRC_DIR = src
+OBJ_DIR = obj
+INCLUDE_DIR = include
+
+# Source files
+WEB_SRCS = $(SRC_DIR)/main_web_test.cpp $(SRC_DIR)/base/traffic_generator.cpp
+WEB_OBJS = $(WEB_SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+# Target executable
+WEB_TARGET = web_test
+
+# Default target
+all: $(WEB_TARGET)
+
+# Create web test executable
+$(WEB_TARGET): $(WEB_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Object file compilation
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $<
+
+# Clean target
+clean:
+	rm -f $(WEB_TARGET) $(WEB_OBJS)
+	rm -rf $(OBJ_DIR)
+
+# Create necessary directories
+dirs:
+	@mkdir -p $(OBJ_DIR)/base
+	@mkdir -p $(OBJ_DIR)/host_system
+	@mkdir -p web_monitor
+
+# Setup web monitoring environment
+setup-web:
+	@mkdir -p web_monitor/templates
+	@mkdir -p web_monitor/static
+	@echo "Web monitoring directories created"
+	@echo "Install Flask and SocketIO: pip3 install flask flask-socketio"
+
+# Run web server (in separate terminal)
+run-server:
+	cd web_monitor && python3 app.py
+
+# Run simulation with web monitoring
+run-web: $(WEB_TARGET)
+	@echo "Starting SystemC simulation with web monitoring..."
+	@echo "Open another terminal and run: make run-server"
+	@echo "Then open browser: http://localhost:5000"
+	./$(WEB_TARGET)
+
+# Phony targets
+.PHONY: all clean dirs setup-web run-server run-web
+
+# Dependencies
+$(WEB_OBJS): | dirs

@@ -7,6 +7,7 @@
 #include <functional>
 #include <random>
 #include <algorithm>
+#include <iomanip>
 #include "common/error_handling.h"
 
 // Memory entry structure - can be customized per use case

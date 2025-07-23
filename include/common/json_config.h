@@ -53,9 +53,33 @@ public:
         }
         return default_value;
     }
+    
+    // Get a configuration section (for hierarchical configs)
+    JsonConfig get_section(const std::string& section_name) const {
+        // Create a temporary config object with filtered keys
+        JsonConfig section_config("", true);
+        std::string prefix = section_name + ".";
+        
+        for (const auto& pair : config_map) {
+            if (pair.first.substr(0, prefix.length()) == prefix) {
+                std::string key = pair.first.substr(prefix.length());
+                section_config.config_map[key] = pair.second;
+            }
+        }
+        
+        return section_config;
+    }
+
+    // Constructor for creating empty config (used by get_section)
+    JsonConfig(const std::string& filename, bool dummy) {
+        if (!dummy) {
+            load_config(filename);
+        }
+    }
 
 private:
     std::map<std::string, std::string> config_map;
+    friend class JsonConfig;
     
     void load_config(const std::string& filename) {
         std::ifstream file(filename);
