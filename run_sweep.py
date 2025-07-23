@@ -230,12 +230,12 @@ Modified File: {self.sweep_config['config_file']}
                     shutil.move(str(log_file), tc_config_dir)
                 
                 # Extract performance metrics
-                throughput, sim_time, latency, bw_packets_sec = self.extract_performance_metrics(tc_config_dir)
+                throughput, sim_time, latency, bw_mbps = self.extract_performance_metrics(tc_config_dir)
                 if throughput:
-                    print(f"{Colors.YELLOW}Performance: {throughput} tps, {sim_time} ms, {latency} ns avg latency, {bw_packets_sec} pps{Colors.NC}")
+                    print(f"{Colors.YELLOW}Performance: {throughput} tps, {sim_time} ms, {latency} ns avg latency, {bw_mbps} MB/s{Colors.NC}")
                 
                 # Store result
-                self.results.append(f"{tc_name},{value},{throughput},{sim_time},{latency},{bw_packets_sec},PASSED")
+                self.results.append(f"{tc_name},{value},{throughput},{sim_time},{latency},{bw_mbps},PASSED")
                 
                 # Create test case summary
                 self.create_tc_result(tc_config_dir, tc_name, value, "PASSED", duration)
@@ -277,7 +277,7 @@ Modified File: {self.sweep_config['config_file']}
             throughput = "0"
             sim_time = "0"
             latency = "0"
-            bw_packets_sec = "0"
+            bw_mbps = "0"
             
             for line in content.split('\n'):
                 # Extract existing metrics
@@ -291,11 +291,11 @@ Modified File: {self.sweep_config['config_file']}
                     latency_str = line.split("Period avg latency:")[1].strip().split()[0]
                     latency = latency_str
                     
-                if "Average packet rate:" in line:
-                    bw_str = line.split("Average packet rate:")[1].strip().split()[0]
-                    bw_packets_sec = bw_str
+                if "Average throughput:" in line and "MB/sec" in line:
+                    bw_str = line.split("Average throughput:")[1].strip().split()[0]
+                    bw_mbps = bw_str
                     
-            return throughput, sim_time, latency, bw_packets_sec
+            return throughput, sim_time, latency, bw_mbps
             
         except Exception:
             return "0", "0", "0", "0"
@@ -347,7 +347,7 @@ Results: {tc_results_dir}
         # Create CSV results
         csv_file = self.sweep_results_dir / "sweep_results.csv"
         with open(csv_file, 'w') as f:
-            f.write(f"TestCase,{self.sweep_config['parameter']},Throughput_TPS,SimTime_MS,Latency_NS,BW_PPS,Status\n")
+            f.write(f"TestCase,{self.sweep_config['parameter']},Throughput_TPS,SimTime_MS,Latency_NS,BW_MBPS,Status\n")
             for result in self.results:
                 f.write(result + "\n")
                 
@@ -385,8 +385,8 @@ Parameter vs Performance:
         for result in self.results:
             parts = result.split(',')
             if len(parts) >= 7 and parts[6] == "PASSED":
-                tc_name, param, throughput, simtime, latency, bw_pps, status = parts
-                summary_content += f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} tps ({simtime} ms, {latency} ns avg latency, {bw_pps} pps)\n"
+                tc_name, param, throughput, simtime, latency, bw_mbps, status = parts
+                summary_content += f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} tps ({simtime} ms, {latency} ns avg latency, {bw_mbps} MB/s)\n"
                 
         # Overall status
         if self.failed == 0:
@@ -437,8 +437,8 @@ echo "Using regression results directory: {self.sweep_results_dir}"
         for result in self.results:
             parts = result.split(',')
             if len(parts) >= 7 and parts[6] == "PASSED":
-                tc_name, param, throughput, simtime, latency, bw_pps, status = parts
-                print(f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} tps ({simtime} ms, {latency} ns avg latency, {bw_pps} pps)")
+                tc_name, param, throughput, simtime, latency, bw_mbps, status = parts
+                print(f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} tps ({simtime} ms, {latency} ns avg latency, {bw_mbps} MB/s)")
                 
         if self.failed == 0:
             print(f"{Colors.GREEN}All test cases passed! 🎉{Colors.NC}")
