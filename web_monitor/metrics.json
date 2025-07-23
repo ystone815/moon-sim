@@ -1,1 +1,0 @@
-{\n  "timestamp": 1753309172590,\n  "simulation_time_ns": 30000000000.00,\n  "metrics": {\n    "performance": {\n      "packet_rate_pps": 0.50,\n      "bandwidth_mbps": 0.00,\n      "total_packets": 1\n    },\n    "caches": {\n\n    },\n    "dram": {\n\n    },\n    "components": {\n      "TrafficGenerator": 1\n    }\n  }\n}

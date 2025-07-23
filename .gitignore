@@ -1,6 +1,8 @@
 # Build artifacts
 obj/
 sim
+web_test
+cache_test
 *.o
 
 # Log files
@@ -31,3 +33,10 @@ regression_runs/
 temp/
 *_debug.log
 sweep_*.log
+test_output.log
+
+# Web monitoring temporary files
+web_monitor/metrics.json
+web_monitor/app.log
+web_monitor/__pycache__/
+*.pyc
