@@ -1,0 +1,29 @@
+{
+  "traffic_generator": {
+    "num_transactions": 500000,
+    "interval_ns": 20,
+    "locality_percentage": 100,
+    "write_percentage": 10,
+    "databyte_value": 256,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 256,
+    
+    "_comment_template": "STREAMING workload template - high-throughput sequential reads",
+    "traffic_pattern": "CONSTANT",
+    "workload_template": "STREAMING",
+    
+    "_comment_burst": "Continuous streaming with minimal gaps",
+    "burst_size": 50,
+    "burst_interval_ns": 5,
+    "idle_time_ns": 100,
+    
+    "_comment_distributions": "Minimal variance for streaming consistency",
+    "delay_mean_ns": 20.0,
+    "delay_stddev_ns": 2.0,
+    "poisson_rate": 10000.0
+  },
+  "description": "STREAMING workload template - high-throughput sequential streaming",
+  "version": "1.0"
+}

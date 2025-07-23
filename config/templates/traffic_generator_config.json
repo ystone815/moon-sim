@@ -1,17 +1,17 @@
 {
   "traffic_generator": {
-    "num_transactions": 10000,
+    "num_transactions": 1000,
     "interval_ns": 100,
     "locality_percentage": 100,
     "write_percentage": 100,
     "databyte_value": 64,
-    "debug_enable": false,
+    "debug_enable": true,
     "start_address": 0,
     "end_address": 65535,
     "address_increment": 64,
     
-    "_comment_advanced": "Advanced Traffic Pattern Configuration",
-    "traffic_pattern": "BURST",
+    "_comment_advanced": "Default template test configuration",
+    "traffic_pattern": "CONSTANT",
     "workload_template": "CUSTOM",
     
     "_comment_burst": "Burst Pattern Parameters",
@@ -24,6 +24,6 @@
     "delay_stddev_ns": 20.0,
     "poisson_rate": 1000.0
   },
-  "description": "TrafficGenerator specific configuration",
+  "description": "Template test configuration",
   "version": "1.0"
 }

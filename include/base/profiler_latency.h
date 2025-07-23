@@ -8,6 +8,7 @@
 #include <vector>
 #include <iomanip>
 #include <algorithm>
+#include <cmath>
 #include "packet/base_packet.h"
 
 // Latency profiler for measuring request-to-response latency
@@ -157,6 +158,43 @@ private:
     // Current period tracking
     std::vector<sc_time> m_current_period_latencies;
     
+    // Calculate percentile from sorted latency vector
+    sc_time calculate_percentile(const std::vector<sc_time>& sorted_latencies, double percentile) const {
+        if (sorted_latencies.empty()) return SC_ZERO_TIME;
+        
+        double index = (percentile / 100.0) * (sorted_latencies.size() - 1);
+        size_t lower_index = static_cast<size_t>(std::floor(index));
+        size_t upper_index = static_cast<size_t>(std::ceil(index));
+        
+        if (lower_index == upper_index) {
+            return sorted_latencies[lower_index];
+        }
+        
+        // Linear interpolation between two values
+        double weight = index - lower_index;
+        double lower_ns = sorted_latencies[lower_index].to_seconds() * 1000000000;
+        double upper_ns = sorted_latencies[upper_index].to_seconds() * 1000000000;
+        double interpolated_ns = lower_ns + weight * (upper_ns - lower_ns);
+        
+        return sc_time(interpolated_ns / 1000000000, SC_SEC);
+    }
+    
+    // Calculate standard deviation
+    double calculate_std_deviation(const std::vector<sc_time>& latencies, sc_time mean) const {
+        if (latencies.size() <= 1) return 0.0;
+        
+        double sum_squared_diff = 0.0;
+        double mean_ns = mean.to_seconds() * 1000000000;
+        
+        for (const auto& latency : latencies) {
+            double latency_ns = latency.to_seconds() * 1000000000;
+            double diff = latency_ns - mean_ns;
+            sum_squared_diff += diff * diff;
+        }
+        
+        return std::sqrt(sum_squared_diff / (latencies.size() - 1));
+    }
+    
     // Periodic reporting process thread (inactive - similar to ProfilerBW)
     void reporting_process() {
         // This process is primarily for future extension
@@ -181,10 +219,17 @@ private:
             
             sc_time period_avg(period_total.to_seconds() / m_current_period_latencies.size(), SC_SEC);
             
-            // Calculate median
+            // Sort latencies for percentile calculations
             std::vector<sc_time> sorted_latencies = m_current_period_latencies;
             std::sort(sorted_latencies.begin(), sorted_latencies.end());
-            sc_time period_median = sorted_latencies[sorted_latencies.size() / 2];
+            
+            // Calculate percentiles
+            sc_time period_median = calculate_percentile(sorted_latencies, 50.0);
+            sc_time period_p95 = calculate_percentile(sorted_latencies, 95.0);
+            sc_time period_p99 = calculate_percentile(sorted_latencies, 99.0);
+            
+            // Calculate standard deviation
+            double period_stddev = calculate_std_deviation(m_current_period_latencies, period_avg);
             
             // Overall average
             sc_time overall_avg = (m_total_responses > 0) ? 
@@ -203,6 +248,12 @@ private:
                       << period_max.to_seconds() * 1000000000 << " ns" << std::endl;
             std::cout << "  Period median latency: " << std::fixed << std::setprecision(1) 
                       << period_median.to_seconds() * 1000000000 << " ns" << std::endl;
+            std::cout << "  Period 95th percentile: " << std::fixed << std::setprecision(1) 
+                      << period_p95.to_seconds() * 1000000000 << " ns" << std::endl;
+            std::cout << "  Period 99th percentile: " << std::fixed << std::setprecision(1) 
+                      << period_p99.to_seconds() * 1000000000 << " ns" << std::endl;
+            std::cout << "  Period std deviation: " << std::fixed << std::setprecision(1) 
+                      << period_stddev << " ns" << std::endl;
             std::cout << "  Overall avg latency: " << std::fixed << std::setprecision(1) 
                       << overall_avg.to_seconds() * 1000000000 << " ns" << std::endl;
             std::cout << "  Total requests: " << m_total_requests << std::endl;

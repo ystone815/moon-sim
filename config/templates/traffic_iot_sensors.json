@@ -1,0 +1,29 @@
+{
+  "traffic_generator": {
+    "num_transactions": 10000,
+    "interval_ns": 1000000,
+    "locality_percentage": 20,
+    "write_percentage": 80,
+    "databyte_value": 32,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 32,
+    
+    "_comment_template": "IOT_SENSORS workload template - periodic low-rate updates",
+    "traffic_pattern": "POISSON",
+    "workload_template": "IOT_SENSORS",
+    
+    "_comment_burst": "Small sensor update bursts",
+    "burst_size": 2,
+    "burst_interval_ns": 100000,
+    "idle_time_ns": 10000000,
+    
+    "_comment_distributions": "Poisson arrivals for sensor updates",
+    "delay_mean_ns": 1000000.0,
+    "delay_stddev_ns": 200000.0,
+    "poisson_rate": 100.0
+  },
+  "description": "IOT_SENSORS workload template - low-rate periodic sensor updates",
+  "version": "1.0"
+}

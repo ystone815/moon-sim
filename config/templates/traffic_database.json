@@ -1,0 +1,29 @@
+{
+  "traffic_generator": {
+    "num_transactions": 50000,
+    "interval_ns": 50,
+    "locality_percentage": 80,
+    "write_percentage": 30,
+    "databyte_value": 64,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 64,
+    
+    "_comment_template": "DATABASE workload template - read-heavy with high locality",
+    "traffic_pattern": "BURST",
+    "workload_template": "DATABASE",
+    
+    "_comment_burst": "Small query batches - 3-5 packets per burst",
+    "burst_size": 4,
+    "burst_interval_ns": 20,
+    "idle_time_ns": 500000,
+    
+    "_comment_distributions": "Query response time variations",
+    "delay_mean_ns": 80.0,
+    "delay_stddev_ns": 15.0,
+    "poisson_rate": 2000.0
+  },
+  "description": "DATABASE workload template - read-heavy queries with high locality",
+  "version": "1.0"
+}

@@ -1,0 +1,29 @@
+{
+  "traffic_generator": {
+    "num_transactions": 25000,
+    "interval_ns": 200,
+    "locality_percentage": 95,
+    "write_percentage": 20,
+    "databyte_value": 128,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 128,
+    
+    "_comment_template": "ML_INFERENCE workload template - batch sequential processing",
+    "traffic_pattern": "BURST",
+    "workload_template": "ML_INFERENCE",
+    
+    "_comment_burst": "Large inference batches with processing intervals",
+    "burst_size": 16,
+    "burst_interval_ns": 10,
+    "idle_time_ns": 5000000,
+    
+    "_comment_distributions": "Predictable batch processing times",
+    "delay_mean_ns": 200.0,
+    "delay_stddev_ns": 30.0,
+    "poisson_rate": 800.0
+  },
+  "description": "ML_INFERENCE workload template - predictable batch processing",
+  "version": "1.0"
+}

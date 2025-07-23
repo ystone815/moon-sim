@@ -1,0 +1,29 @@
+{
+  "traffic_generator": {
+    "num_transactions": 100,
+    "interval_ns": 100,
+    "locality_percentage": 80,
+    "write_percentage": 30,
+    "databyte_value": 64,
+    "debug_enable": true,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 64,
+    
+    "_comment_advanced": "Burst Traffic Pattern for Testing",
+    "traffic_pattern": "BURST",
+    "workload_template": "CUSTOM",
+    
+    "_comment_burst": "Burst Pattern Parameters - 5 packets per burst, 1ms idle",
+    "burst_size": 5,
+    "burst_interval_ns": 50,
+    "idle_time_ns": 1000000,
+    
+    "_comment_distributions": "Not used for BURST pattern",
+    "delay_mean_ns": 100.0,
+    "delay_stddev_ns": 20.0,
+    "poisson_rate": 1000.0
+  },
+  "description": "Burst traffic pattern test configuration",
+  "version": "1.0"
+}

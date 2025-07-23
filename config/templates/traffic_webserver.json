@@ -1,0 +1,29 @@
+{
+  "traffic_generator": {
+    "num_transactions": 100000,
+    "interval_ns": 100,
+    "locality_percentage": 40,
+    "write_percentage": 50,
+    "databyte_value": 64,
+    "debug_enable": false,
+    "start_address": 0,
+    "end_address": 65535,
+    "address_increment": 64,
+    
+    "_comment_template": "WEB_SERVER workload template - bursty mixed read/write",
+    "traffic_pattern": "EXPONENTIAL",
+    "workload_template": "WEB_SERVER",
+    
+    "_comment_burst": "Variable request bursts simulating web traffic spikes",
+    "burst_size": 8,
+    "burst_interval_ns": 30,
+    "idle_time_ns": 2000000,
+    
+    "_comment_distributions": "Exponential inter-arrival times for web requests",
+    "delay_mean_ns": 150.0,
+    "delay_stddev_ns": 50.0,
+    "poisson_rate": 1500.0
+  },
+  "description": "WEB_SERVER workload template - exponential arrivals with mixed R/W",
+  "version": "1.0"
+}
