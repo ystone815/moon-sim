@@ -75,6 +75,27 @@ make -f Makefile_web clean && make -f Makefile_web
    - Click **Start** to run simulation
    - Monitor real-time metrics and logs
 
+### Method 3: Terminal-based Monitoring (Corporate-Friendly)
+
+For environments where web access is restricted, use terminal monitoring:
+
+1. **Start SystemC Simulation**
+   ```bash
+   export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11
+   ./web_test config/base &
+   ```
+
+2. **Start Terminal Monitor**
+   ```bash
+   cd web_monitor
+   python3 terminal_monitor.py
+   ```
+
+3. **Advanced Terminal UI** (optional)
+   ```bash
+   python3 terminal_monitor.py --curses
+   ```
+
 ## 📊 Dashboard Overview
 
 ### Control Panel
@@ -99,6 +120,13 @@ make -f Makefile_web clean && make -f Makefile_web
 ### Detailed Statistics
 - **Cache Statistics**: Total accesses, hits, misses, evictions
 - **DRAM Statistics**: Total requests, row hits, bank conflicts, average latency
+
+### Terminal Monitor Features
+- **Real-time Updates**: Live metrics display in terminal
+- **ASCII Charts**: Simple throughput history visualization
+- **No Network Required**: Works in restricted corporate environments
+- **Two UI Modes**: Simple text and advanced curses interface
+- **Lightweight**: Minimal resource usage compared to web dashboard
 
 ## 🏗️ Architecture
 
@@ -180,6 +208,11 @@ The system includes several pre-configured workload templates:
 - `GET /api/simulation/status` - Get simulation status
 - `POST /api/simulation/build` - Build simulation executable
 - `GET /api/simulation/configs` - List available configurations
+
+### Terminal Monitoring
+- `python3 terminal_monitor.py` - Basic terminal interface
+- `python3 terminal_monitor.py --curses` - Advanced curses interface
+- `python3 terminal_monitor.py -f FILE -i INTERVAL` - Custom file and update interval
 
 ## 🔍 Troubleshooting
 
