@@ -260,4 +260,5 @@ if __name__ == '__main__':
     os.makedirs('static', exist_ok=True)
     
     # Use threading instead of eventlet to avoid SSL issues
+    # host='0.0.0.0' allows access from Windows browser when running in WSL
     socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)

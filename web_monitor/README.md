@@ -198,12 +198,20 @@ The system includes several pre-configured workload templates:
    pkill -f "python3 app.py"
    ```
 
-3. **No Metrics Displayed**
+3. **WSL Network Access Issues**
+   ```bash
+   # Find WSL IP address
+   hostname -I
+   # Access via http://WSL_IP:5000 instead of localhost:5000
+   # Example: http://172.30.151.67:5000
+   ```
+
+4. **No Metrics Displayed**
    - Ensure SystemC simulation is running
    - Check `web_monitor/metrics.json` file is being created
    - Verify WebSocket connection in browser developer tools
 
-4. **Build Failures**
+5. **Build Failures**
    - Verify SystemC installation and SYSTEMC_HOME
    - Check compiler version (g++ with C++11 support required)
 
