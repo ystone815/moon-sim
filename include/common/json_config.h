@@ -79,7 +79,6 @@ public:
 
 private:
     std::map<std::string, std::string> config_map;
-    friend class JsonConfig;
     
     void load_config(const std::string& filename) {
         std::ifstream file(filename);
