@@ -1,0 +1,228 @@
+{
+  "pcie": {
+    "link_configuration": {
+      "_comment": "PCIe link basic configuration",
+      "generation": 7,
+      "lanes": 16,
+      "max_payload_size": 4096,
+      "max_read_request_size": 4096,
+      
+      "_comment_generations": "Available: 1(2.5GT/s), 2(5GT/s), 3(8GT/s), 4(16GT/s), 5(32GT/s), 6(64GT/s), 7(128GT/s)"
+    },
+    
+    "gen7_advanced_features": {
+      "_comment": "Next-generation PCIe Gen7 specific features",
+      "ai_based_fec": {
+        "enable": true,
+        "ml_prediction": true,
+        "adaptive_crc": true,
+        "pattern_learning": true,
+        "prediction_accuracy": 0.95
+      },
+      
+      "ultra_low_latency": {
+        "enable": true,
+        "target_latency_ns": 5.0,
+        "burst_mode": true,
+        "zero_copy_dma": true
+      },
+      
+      "intelligent_error_correction": {
+        "enable": true,
+        "proactive_correction": true,
+        "error_prediction_window_ns": 1000,
+        "adaptive_retry_strategy": true
+      },
+      
+      "dynamic_optimization": {
+        "enable": true,
+        "traffic_pattern_analysis": true,
+        "automatic_tuning": true,
+        "optimization_interval_ms": 100
+      }
+    },
+    
+    "crc_configuration": {
+      "_comment": "CRC and error correction settings per generation",
+      "gen1_crc": {
+        "scheme": "LCRC32",
+        "overhead_percent": 2.0,
+        "processing_delay_ns": 50.0,
+        "error_detection_rate": 1e-12,
+        "retry_probability": 0.001
+      },
+      
+      "gen3_crc": {
+        "scheme": "128b130b",
+        "overhead_percent": 1.5,
+        "processing_delay_ns": 30.0,
+        "error_detection_rate": 1e-15,
+        "retry_probability": 0.0001
+      },
+      
+      "gen5_crc": {
+        "scheme": "FEC+CRC",
+        "overhead_percent": 4.0,
+        "processing_delay_ns": 20.0,
+        "error_detection_rate": 1e-17,
+        "retry_probability": 0.00001,
+        "fec_enabled": true
+      },
+      
+      "gen7_crc": {
+        "scheme": "AI-FEC",
+        "overhead_percent_min": 2.0,
+        "overhead_percent_max": 5.0,
+        "processing_delay_ns": 5.0,
+        "error_detection_rate": 1e-19,
+        "retry_probability": 0.000001,
+        "fec_enabled": true,
+        "adaptive_crc": true,
+        "ml_prediction": true,
+        "real_time_optimization": true
+      }
+    },
+    
+    "performance_optimization": {
+      "_comment": "Performance and QoS settings",
+      "link_utilization": {
+        "target_utilization_percent": 85.0,
+        "congestion_threshold_percent": 80.0,
+        "max_congestion_delay_ns": 1000.0,
+        "adaptive_flow_control": true
+      },
+      
+      "traffic_class_priority": {
+        "tc0_weight": 1,
+        "tc1_weight": 2,
+        "tc2_weight": 4,
+        "tc3_weight": 8,
+        "strict_priority_tc": [6, 7]
+      },
+      
+      "power_management": {
+        "enable_l0s": true,
+        "enable_l1": true,
+        "l0s_entry_latency_ns": 1000,
+        "l1_entry_latency_ns": 10000,
+        "aspm_policy": "performance"
+      }
+    },
+    
+    "simulation_settings": {
+      "_comment": "Simulation-specific configuration",
+      "enable_crc_simulation": true,
+      "enable_congestion_model": true,
+      "enable_error_injection": false,
+      "enable_timing_variation": true,
+      
+      "debug_settings": {
+        "enable_debug_logging": false,
+        "log_crc_events": false,
+        "log_congestion_events": false,
+        "log_retry_events": true,
+        "performance_monitoring": true
+      },
+      
+      "statistical_modeling": {
+        "enable_link_utilization_tracking": true,
+        "utilization_window_ms": 10,
+        "error_rate_tracking": true,
+        "performance_metrics_interval_ms": 100
+      }
+    },
+    
+    "interoperability": {
+      "_comment": "Multi-generation and compatibility settings",
+      "backward_compatibility": {
+        "support_legacy_generations": true,
+        "auto_negotiate_generation": true,
+        "fallback_generation": 3,
+        "compatibility_mode": "auto"
+      },
+      
+      "mixed_generation_links": {
+        "enable": true,
+        "downstream_generation": 7,
+        "upstream_generation": 7,
+        "negotiate_common_features": true
+      }
+    },
+    
+    "vendor_specific": {
+      "_comment": "Vendor-specific extensions and features",
+      "custom_tlp_types": {
+        "enable": false,
+        "vendor_id": 0x10DE,
+        "custom_opcodes": []
+      },
+      
+      "proprietary_features": {
+        "enable_vendor_extensions": false,
+        "custom_flow_control": false,
+        "proprietary_encoding": false
+      }
+    },
+    
+    "testing_and_validation": {
+      "_comment": "Test and validation configuration",
+      "compliance_testing": {
+        "pcie_sig_compliance": true,
+        "electrical_testing": false,
+        "protocol_testing": true,
+        "interop_testing": true
+      },
+      
+      "stress_testing": {
+        "enable_error_injection": false,
+        "random_packet_drops": false,
+        "congestion_simulation": true,
+        "thermal_throttling": false
+      },
+      
+      "benchmark_modes": {
+        "throughput_benchmark": false,
+        "latency_benchmark": false,
+        "mixed_workload_benchmark": true,
+        "sustained_performance_test": true
+      }
+    }
+  },
+  
+  "system_integration": {
+    "_comment": "Integration with existing SystemC simulation",
+    "replace_delay_lines": {
+      "downstream": true,
+      "upstream": true,
+      "use_pcie_for_host_device": true,
+      "use_pcie_for_device_memory": false
+    },
+    
+    "packet_conversion": {
+      "auto_convert_base_packets": true,
+      "preserve_original_packets": true,
+      "enable_packet_inspection": false
+    },
+    
+    "performance_targets": {
+      "maintain_26M_tps": true,
+      "target_latency_reduction_percent": 20,
+      "improve_bandwidth_efficiency": true
+    }
+  },
+  
+  "_metadata": {
+    "description": "PCIe Gen7 configuration with AI-based FEC and ultra-low latency features",
+    "version": "1.0", 
+    "compatible_generations": [1, 2, 3, 4, 5, 6, 7],
+    "target_applications": ["high-performance computing", "AI/ML workloads", "real-time systems"],
+    "benchmark_results": {
+      "gen1_baseline_tps": 50000,
+      "gen3_improved_tps": 150000,
+      "gen7_target_tps": 300000,
+      "latency_improvement_gen7": "90% reduction vs Gen1"
+    },
+    "author": "SystemC PCIe Simulator",
+    "date": "2025-01-25"
+  }
+}
