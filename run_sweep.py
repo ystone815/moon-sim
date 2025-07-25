@@ -252,10 +252,7 @@ Modified File: {self.sweep_config['config_file']}
             print(f"{Colors.RED}Error: Test case config directory '{tc_config_dir}' not found{Colors.NC}")
             return False
         
-        # Clear existing logs
-        log_files = list(Path("log").glob("simulation_*.log"))
-        for log_file in log_files:
-            log_file.unlink()
+        # Note: Log files are now generated directly in TC directories
             
         # Run simulation with timeout
         start_time = time.time()
@@ -275,10 +272,7 @@ Modified File: {self.sweep_config['config_file']}
                 # Success
                 print(f"{Colors.GREEN}✓ {tc_name} PASSED ({duration}s){Colors.NC}")
                 
-                # Move logs to results directory
-                log_files = list(Path("log").glob("simulation_*.log"))
-                for log_file in log_files:
-                    shutil.move(str(log_file), tc_config_dir)
+                # Note: Log files are now generated directly in TC directories
                 
                 # Move metric files to results directory if they exist
                 for metric_file in ["metrics.csv", "performance.json"]:
@@ -303,10 +297,7 @@ Modified File: {self.sweep_config['config_file']}
                 # Failure
                 print(f"{Colors.RED}✗ {tc_name} FAILED{Colors.NC}")
                 
-                # Move logs even on failure
-                log_files = list(Path("log").glob("simulation_*.log"))
-                for log_file in log_files:
-                    shutil.move(str(log_file), tc_config_dir)
+                # Note: Log files are now generated directly in TC directories
                 
                 self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,FAILED")
                 self.create_tc_result(tc_config_dir, tc_name, value, "FAILED", duration)

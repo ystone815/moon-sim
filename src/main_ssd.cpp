@@ -65,11 +65,11 @@ int sc_main(int argc, char* argv[]) {
         std::cerr << "Error: Failed to create log directory. Logging may not work properly." << std::endl;
     }
     
-    // Generate a timestamp for the log file
+    // Generate log file in the config directory (TC folder for sweeps)
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     std::stringstream ss;
-    ss << "log/ssd_simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
+    ss << config_dir << "ssd_simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
     std::string log_filename = ss.str();
 
     // Redirect cout to log file for sweep test compatibility

@@ -64,11 +64,11 @@ int sc_main(int argc, char* argv[]) {
         // Continue execution - program should still work without logging
     }
     
-    // Generate a timestamp for the log file
+    // Generate log file in the config directory (TC folder for sweeps)
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     std::stringstream ss;
-    ss << "log/simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
+    ss << config_dir << "simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
     std::string log_filename = ss.str();
 
     // Always redirect cout to the log file
