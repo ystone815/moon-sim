@@ -40,3 +40,7 @@ web_monitor/metrics.json
 web_monitor/app.log
 web_monitor/__pycache__/
 *.pyc
+# SystemC build and installation files
+systemc-2.3.3/
+systemc-build/
+systemc-install/

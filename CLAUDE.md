@@ -7,14 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Environment Setup (Required)
 ```bash
 # Set SYSTEMC_HOME environment variable
-export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11
+export SYSTEMC_HOME=/home/stone/project/systemc/systemc-install
 
 # Or for different installations:
 export SYSTEMC_HOME=/usr/local/systemc        # System installation
 export SYSTEMC_HOME=/opt/systemc              # Custom location
 
 # Add to ~/.bashrc for permanent setting:
-echo 'export SYSTEMC_HOME=/tmp/systemc-install/usr/local/systemc-cxx11' >> ~/.bashrc
+echo 'export SYSTEMC_HOME=/home/stone/project/systemc/systemc-install' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -38,7 +38,7 @@ python3 run_sweep.py config/sweeps/write_ratio_sweep.json
 ### SystemC Environment
 - **Environment Variable**: `SYSTEMC_HOME` must be set (Makefile enforces this)
 - **Custom C++11 SystemC**: Built from SystemC 2.3.3 source with `-std=c++11`
-- **Default Path**: `/tmp/systemc-install/usr/local/systemc-cxx11`
+- **Default Path**: `/home/stone/project/systemc/systemc-install`
 - **Corporate Compatible**: Works in C++11-only environments
 - **Flexible Installation**: Supports any SystemC installation path via environment variable
 

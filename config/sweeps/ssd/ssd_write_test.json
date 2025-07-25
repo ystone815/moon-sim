@@ -8,6 +8,6 @@
   "start": 0,
   "end": 100,
   "step": 25,
-  "expected_points": 3,
+  "expected_points": 5,
   "version": "1.0"
 }
