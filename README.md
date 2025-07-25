@@ -228,11 +228,11 @@ The simulator uses separate JSON configuration files organized in `config/base/`
 | Configuration | Throughput | Notes |
 |---------------|------------|-------|
 | **SC_MODULE FunctionProfiler** | **640+ MB/sec** | Real-time profiling with 610.35 MB/sec sustained |
-| **Simulation Performance** | **48,000-50,000 tps** | 1M transactions in ~2 seconds |
+| **Simulation Performance** | **260,000+ tps** | 100K transactions in ~380ms (WSL2 Ubuntu filesystem) |
 | **Profiler Overhead** | **Minimal** | SystemC-compliant with dedicated process infrastructure |
 | **Index Pool (100 entries)** | **No blocking** | Minimum allocation strategy |
 | **Debug Disabled** | **Optimal** | Clean profiler-only output |
-| **Parameter Sweeps** | **48,473-50,000 tps** | Consistent across write ratio variations (latest test) |
+| **Parameter Sweeps** | **254,000-263,000 tps** | Consistent across write ratio variations (WSL2 optimized) |
 
 ### Memory Configurations
 - **Small (256 entries)**: Basic testing
