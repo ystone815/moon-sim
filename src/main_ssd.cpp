@@ -72,11 +72,9 @@ int sc_main(int argc, char* argv[]) {
     ss << "log/ssd_simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
     std::string log_filename = ss.str();
 
-    // Redirect cout to log file (disabled for debugging)
+    // Redirect cout to log file for sweep test compatibility
     std::ofstream log_file;
     std::streambuf* cout_sbuf = nullptr;
-    // Temporarily disable log redirection for debugging
-    /*
     log_file.open(log_filename);
     if (!log_file.is_open()) {
         std::cerr << "Warning: Could not open log file " << log_filename << std::endl;
@@ -84,7 +82,6 @@ int sc_main(int argc, char* argv[]) {
         cout_sbuf = std::cout.rdbuf();
         std::cout.rdbuf(log_file.rdbuf());
     }
-    */
 
     std::cout << "========================================" << std::endl;
     std::cout << "SSD Simulation with PCIe Gen" << static_cast<int>(pcie_gen) 
@@ -301,7 +298,12 @@ int sc_main(int argc, char* argv[]) {
         }
     }
     
-    // No need to restore cout since logging was disabled
+    // Restore cout to its original streambuf
+    if (log_file.is_open() && cout_sbuf) {
+        std::cout.rdbuf(cout_sbuf);
+        log_file.close();
+    }
+    
     std::cout << "Simulation completed." << std::endl;
     
     return 0;
