@@ -1,6 +1,7 @@
 {
   "sweep_name": "burst_pattern_test",
   "description": "Test burst traffic pattern with different burst sizes",
+  "target": "sim",
   "base_config": "config/base",
   "parameter": "burst_size",
   "config_file": "traffic_generator_config.json",

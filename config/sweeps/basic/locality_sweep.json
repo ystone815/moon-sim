@@ -1,6 +1,7 @@
 {
   "sweep_name": "locality_percentage_sweep",
   "description": "Sweep locality_percentage from 0% to 100% in 25% steps",
+  "target": "sim",
   "base_config": "config/base",
   "parameter": "locality_percentage",
   "config_file": "traffic_generator_config.json",

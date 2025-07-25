@@ -1,6 +1,7 @@
 {
   "sweep_name": "max_index_sweep",
   "description": "Sweep IndexAllocator max_index from 10 to 100 in steps of 10",
+  "target": "sim",
   "base_config": "config/base",
   "parameter": "max_index",
   "config_file": "host_system_config.json",

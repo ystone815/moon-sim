@@ -254,3 +254,68 @@ log/                # Timestamped simulation output logs
 - **Custom SystemC Build**: SystemC 2.3.3 compiled with `-std=c++11` standard
 - **Template Components**: All performance-critical components are header-only templates
 - **Corporate Environment Ready**: Tested in C++11-only environments
+
+### Design Principles: Modular Architecture
+
+Always follow these modular design principles when developing or modifying the SystemC simulation:
+
+#### 1. **Avoid Duplication**
+- Never create redundant components that replicate existing functionality
+- Reuse existing modules (e.g., HostSystem's embedded profiler) instead of creating separate ones
+- If similar functionality exists, extend or configure the existing component rather than duplicating
+
+#### 2. **Single Responsibility Principle**
+- Each module should have one clear, well-defined responsibility
+- HostSystem handles traffic generation and profiling
+- DelayLines handle timing simulation
+- Memory components handle storage simulation
+- Avoid mixing concerns within a single module
+
+#### 3. **Leverage Built-in Capabilities**
+- Use HostSystem's embedded ProfilerBW and ProfilerLatency instead of external monitors
+- Utilize existing template components before creating new ones
+- Check existing modules for required functionality before implementing new features
+
+#### 4. **Prefer Composition Over Inheritance**
+- Use template-based composition for performance-critical paths
+- Encapsulate related components (e.g., TrafficGenerator + IndexAllocator → HostSystem)
+- Maintain clear interfaces between modules using SystemC FIFOs
+
+#### 5. **Configuration-Driven Design**
+- Make components configurable through JSON rather than hardcoded values
+- Separate configuration concerns (separate JSON files for different components)
+- Enable/disable features through configuration rather than conditional compilation
+
+#### 6. **Performance-First Architecture**
+- Minimize intermediate components in critical paths
+- Use direct connections where possible (HostSystem → PCIe → Target)
+- Prefer header-only templates for performance-critical components
+- Avoid unnecessary FIFO buffers and intermediate modules
+
+#### 7. **Template-Based Reusability**
+- Design components as templates to work with different packet types
+- Use template parameters for sizing and configuration
+- Maintain type safety while enabling flexibility
+
+#### Examples of Good Modular Design:
+```cpp
+// ✅ Good: Reuse existing HostSystem profiler
+host_system.force_profiler_report();
+
+// ❌ Bad: Create redundant latency monitor
+SSDLatencyMonitor custom_monitor("monitor", profiler);
+
+// ✅ Good: Direct, efficient connections
+HostSystem → PCIe → SSD
+
+// ❌ Bad: Unnecessary intermediate components
+HostSystem → CustomMonitor → PCIe → SSD
+```
+
+#### Code Review Checklist:
+- [ ] Does this duplicate existing functionality?
+- [ ] Can existing components be reused or extended instead?
+- [ ] Does each module have a single, clear responsibility?
+- [ ] Are connections as direct as possible for performance?
+- [ ] Is the design configurable rather than hardcoded?
+- [ ] Are templates used appropriately for reusability?

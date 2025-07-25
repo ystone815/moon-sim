@@ -50,6 +50,9 @@ struct FlashBlock {
     uint32_t erase_count;
     bool is_bad_block;
     
+    // Default constructor for array initialization
+    FlashBlock() : pages(128, PageState::CLEAN), erase_count(0), is_bad_block(false) {}
+    
     FlashBlock(size_t pages_per_block) 
         : pages(pages_per_block, PageState::CLEAN), erase_count(0), is_bad_block(false) {}
 };

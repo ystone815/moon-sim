@@ -1,12 +1,13 @@
 {
-  "sweep_name": "small_write_test",
-  "description": "Small test with only 3 points",
+  "sweep_name": "ssd_write_percentage_test",
+  "description": "SSD write percentage sweep test with small range",
+  "target": "sim_ssd",
   "base_config": "config/base",
   "parameter": "write_percentage",
   "config_file": "traffic_generator_config.json",
   "start": 0,
-  "end": 20,
-  "step": 10,
+  "end": 100,
+  "step": 25,
   "expected_points": 3,
   "version": "1.0"
 }

@@ -1,6 +1,8 @@
 #include <systemc.h>
 #include <iostream>
 #include <memory>
+#include <fstream>
+#include <ctime>
 #include "base/cache_l1.h"
 #include "base/dram_controller.h"
 #include "base/memory_hierarchy.h"
@@ -101,6 +103,27 @@ int sc_main(int argc, char* argv[]) {
     delete tb;
     
     std::cout << "Simulation finished." << std::endl;
+    
+    // Generate standardized metric files for sweep collection
+    std::ofstream metrics_csv("metrics.csv");
+    if (metrics_csv.is_open()) {
+        metrics_csv << "metric,value,unit\n";
+        metrics_csv << "simulation_target,cache_test,type\n";
+        metrics_csv << "status,completed,state\n";
+        metrics_csv.close();
+    }
+    
+    std::ofstream performance_json("performance.json");
+    if (performance_json.is_open()) {
+        performance_json << "{\n";
+        performance_json << "  \"simulation\": {\n";
+        performance_json << "    \"target\": \"cache_test\",\n";
+        performance_json << "    \"timestamp\": \"" << std::time(nullptr) << "\",\n";
+        performance_json << "    \"status\": \"completed\"\n";
+        performance_json << "  }\n";
+        performance_json << "}\n";
+        performance_json.close();
+    }
     
     return 0;
 }

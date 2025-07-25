@@ -202,7 +202,35 @@ int sc_main(int argc, char* argv[]) {
     std::cout << "Performance Metrics:" << std::endl;
     std::cout << "Total transactions: (configured in TrafficGenerator)" << std::endl;
     std::cout << "Simulation time: " << duration.count() << " ms (" << duration_seconds << " seconds)" << std::endl;
-    std::cout << "Throughput: " << static_cast<int>(transactions_per_second) << " transactions/second" << std::endl;
+    std::cout << "Sim Speed: " << static_cast<int>(transactions_per_second) << " CPS" << std::endl;
+    
+    // Generate standardized metric files for sweep collection
+    std::ofstream metrics_csv("metrics.csv");
+    if (metrics_csv.is_open()) {
+        metrics_csv << "metric,value,unit\n";
+        metrics_csv << "sim_speed," << std::fixed << std::setprecision(0) << transactions_per_second << ",cps\n";
+        metrics_csv << "simulation_time," << duration.count() << ",ms\n";
+        metrics_csv << "simulation_time_seconds," << std::setprecision(3) << duration_seconds << ",s\n";
+        metrics_csv.close();
+    }
+    
+    std::ofstream performance_json("performance.json");
+    if (performance_json.is_open()) {
+        performance_json << "{\n";
+        performance_json << "  \"simulation\": {\n";
+        performance_json << "    \"target\": \"sim\",\n";
+        performance_json << "    \"timestamp\": \"" << std::time(nullptr) << "\",\n";
+        performance_json << "    \"duration_ms\": " << duration.count() << ",\n";
+        performance_json << "    \"duration_seconds\": " << std::setprecision(3) << duration_seconds << ",\n";
+        performance_json << "    \"systemc_time\": \"" << sc_time_stamp() << "\"\n";
+        performance_json << "  },\n";
+        performance_json << "  \"performance\": {\n";
+        performance_json << "    \"sim_speed_cps\": " << std::fixed << std::setprecision(0) << transactions_per_second << ",\n";
+        performance_json << "    \"latency_profiler_enabled\": " << (enable_latency_profiler ? "true" : "false") << "\n";
+        performance_json << "  }\n";
+        performance_json << "}\n";
+        performance_json.close();
+    }
 
     // Restore cout to its original streambuf
     if (log_file.is_open() && cout_sbuf) {

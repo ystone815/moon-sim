@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 SystemC Parameter Sweep Test Runner (Python Version)
-Usage: python3 run_sweep.py <sweep_config_file> [batch_name]
+Usage: python3 run_sweep.py <sweep_config_file> [batch_name] [target]
+Targets: sim (default), sim_ssd, cache_test, web_test
 """
 
 import json
@@ -23,10 +24,44 @@ class Colors:
     NC = '\033[0m'  # No Color
 
 class SweepRunner:
-    def __init__(self, sweep_config_file, batch_name=None):
+    def __init__(self, sweep_config_file, batch_name=None, target="sim"):
         self.sweep_config_file = sweep_config_file
+        
+        # Enable auto-detection if target is default and config file might have target field
+        self.auto_detect_target = (target == "sim")
+        self.target = target
+        
         self.sweep_config = self.load_sweep_config()
         
+        # Simulation target configuration (target may have been updated by load_sweep_config)
+        self.target_configs = {
+            "sim": {
+                "executable": "./sim",
+                "make_target": "sim",
+                "description": "Basic SystemC simulation (HostSystem + Memory)"
+            },
+            "sim_ssd": {
+                "executable": "./sim_ssd", 
+                "make_target": "sim_ssd",
+                "description": "SSD simulation with PCIe interface"
+            },
+            "cache_test": {
+                "executable": "./cache_test",
+                "make_target": "cache_test", 
+                "description": "Cache performance testing"
+            },
+            "web_test": {
+                "executable": "./web_test",
+                "make_target": "web_test",
+                "description": "Web monitoring simulation"
+            }
+        }
+        
+        # Validate target
+        if target not in self.target_configs:
+            print(f"{Colors.RED}Error: Invalid target '{target}'. Available: {list(self.target_configs.keys())}{Colors.NC}")
+            sys.exit(1)
+            
         # Generate batch name with timestamp
         if batch_name:
             self.batch_name = batch_name
@@ -50,6 +85,12 @@ class SweepRunner:
         try:
             with open(self.sweep_config_file, 'r') as f:
                 config = json.load(f)
+            
+            # Auto-detect target from config if not specified by user
+            if hasattr(self, 'auto_detect_target') and config.get('target'):
+                self.target = config['target']
+                print(f"{Colors.BLUE}Auto-detected target from config: {self.target}{Colors.NC}")
+                
             return config
         except FileNotFoundError:
             print(f"{Colors.RED}Error: Sweep config file '{self.sweep_config_file}' not found{Colors.NC}")
@@ -66,6 +107,7 @@ class SweepRunner:
         print(f"{Colors.BLUE}Sweep Config: {self.sweep_config_file}{Colors.NC}")
         print(f"{Colors.BLUE}Batch Name: {self.batch_with_time}{Colors.NC}")
         print(f"{Colors.BLUE}Results Directory: {self.sweep_results_dir}{Colors.NC}")
+        print(f"{Colors.BLUE}Target: {self.target} - {self.target_configs[self.target]['description']}{Colors.NC}")
         print(f"{Colors.CYAN}========================================{Colors.NC}")
         
     def print_sweep_parameters(self):
@@ -75,19 +117,25 @@ class SweepRunner:
         print(f"  Parameter: {self.sweep_config['parameter']}")
         print(f"  Range: {self.sweep_config['start']} to {self.sweep_config['end']} (step {self.sweep_config['step']})")
         print(f"  Target File: {self.sweep_config['config_file']}")
+        print(f"  Simulation Target: {self.target} ({self.target_configs[self.target]['executable']})")
         print("")
         
     def build_simulator(self):
         """Build the SystemC simulator"""
-        print(f"{Colors.YELLOW}Building simulator...{Colors.NC}")
+        print(f"{Colors.YELLOW}Building simulator for target '{self.target}'...{Colors.NC}")
         
         # Clean build
         result = subprocess.run(['make', 'clean'], capture_output=True, text=True)
         
-        # Build
-        result = subprocess.run(['make'], capture_output=True, text=True)
+        # Build specific target
+        make_target = self.target_configs[self.target]['make_target']
+        if make_target == "sim":  # Default make target
+            result = subprocess.run(['make'], capture_output=True, text=True)
+        else:
+            result = subprocess.run(['make', make_target], capture_output=True, text=True)
+            
         if result.returncode != 0:
-            print(f"{Colors.RED}Build failed!{Colors.NC}")
+            print(f"{Colors.RED}Build failed for target '{self.target}'!{Colors.NC}")
             print(result.stderr)
             sys.exit(1)
             
@@ -212,8 +260,11 @@ Modified File: {self.sweep_config['config_file']}
         # Run simulation with timeout
         start_time = time.time()
         try:
-            result = subprocess.run(['./sim', str(tc_config_dir)], 
-                                  timeout=30, 
+            executable = self.target_configs[self.target]['executable']
+            # Use longer timeout for complex simulations like SSD
+            timeout = 60 if self.target == 'sim_ssd' else 30
+            result = subprocess.run([executable, str(tc_config_dir)], 
+                                  timeout=timeout, 
                                   capture_output=True, 
                                   text=True)
             
@@ -229,10 +280,16 @@ Modified File: {self.sweep_config['config_file']}
                 for log_file in log_files:
                     shutil.move(str(log_file), tc_config_dir)
                 
-                # Extract performance metrics
-                throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps = self.extract_performance_metrics(tc_config_dir)
-                if throughput:
-                    print(f"{Colors.YELLOW}Performance: {throughput} tps, {sim_time} ms, {latency} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s{Colors.NC}")
+                # Move metric files to results directory if they exist
+                for metric_file in ["metrics.csv", "performance.json"]:
+                    if Path(metric_file).exists():
+                        shutil.move(metric_file, tc_config_dir)
+                        print(f"{Colors.BLUE}Moved {metric_file} to {tc_config_dir}{Colors.NC}")
+                
+                # Extract performance metrics from files or console output
+                throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps = self.extract_performance_metrics(tc_config_dir, result.stdout)
+                if throughput and throughput != "0":
+                    print(f"{Colors.YELLOW}Performance: {throughput} cps, {sim_time} ms, {latency} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s{Colors.NC}")
                 
                 # Store result
                 self.results.append(f"{tc_name},{value},{throughput},{sim_time},{latency},{latency_p50},{latency_p95},{latency_p99},{latency_stddev},{bw_mbps},PASSED")
@@ -262,63 +319,140 @@ Modified File: {self.sweep_config['config_file']}
             self.create_tc_result(tc_config_dir, tc_name, value, "TIMEOUT", 30)
             return False
             
-    def extract_performance_metrics(self, tc_results_dir):
-        """Extract performance metrics from simulation log"""
-        log_files = list(tc_results_dir.glob("simulation_*.log"))
-        if not log_files:
-            return "0", "0", "0", "0", "0", "0", "0", "0"
-            
-        latest_log = max(log_files, key=lambda x: x.stat().st_mtime)
+    def extract_performance_metrics(self, tc_results_dir, stdout_content=""):
+        """Extract performance metrics from generated metric files or fallback to console parsing"""
         
-        try:
-            with open(latest_log, 'r') as f:
-                content = f.read()
+        # Try to read metrics from generated files first (preferred method)
+        metrics_csv_path = tc_results_dir / "metrics.csv"
+        performance_json_path = tc_results_dir / "performance.json"
+        
+        throughput = "0"
+        sim_time = "0"  
+        latency = "0"
+        latency_p50 = "0"
+        latency_p95 = "0"
+        latency_p99 = "0"
+        latency_stddev = "0"
+        bw_mbps = "0"
+        
+        # Read metrics from CSV file
+        if metrics_csv_path.exists():
+            try:
+                with open(metrics_csv_path, 'r') as f:
+                    lines = f.readlines()
+                    for line in lines[1:]:  # Skip header
+                        parts = line.strip().split(',')
+                        if len(parts) >= 3:
+                            metric, value, unit = parts[0], parts[1], parts[2]
+                            if metric == "sim_speed":
+                                throughput = value
+                            elif metric == "simulation_time":
+                                sim_time = value
+                            elif metric == "avg_latency_ns":
+                                latency = value
+                            elif metric == "p50_latency_ns":
+                                latency_p50 = value
+                            elif metric == "p95_latency_ns":
+                                latency_p95 = value
+                            elif metric == "p99_latency_ns":
+                                latency_p99 = value
+                            elif metric == "stddev_latency_ns":
+                                latency_stddev = value
+                            elif metric == "bandwidth_mbps":
+                                bw_mbps = value
+                print(f"{Colors.GREEN}Successfully read metrics from {metrics_csv_path}{Colors.NC}")
+            except Exception as e:
+                print(f"{Colors.YELLOW}Warning: Failed to read metrics.csv: {e}{Colors.NC}")
+        
+        # Read additional performance data from JSON file
+        if performance_json_path.exists():
+            try:
+                with open(performance_json_path, 'r') as f:
+                    perf_data = json.load(f)
+                    
+                # Extract sim speed if not already set
+                if throughput == "0" and "performance" in perf_data and "sim_speed_cps" in perf_data["performance"]:
+                    throughput = str(int(float(perf_data["performance"]["sim_speed_cps"])))
+                    
+                # Extract simulation time if not already set  
+                if sim_time == "0" and "simulation" in perf_data and "duration_ms" in perf_data["simulation"]:
+                    sim_time = str(perf_data["simulation"]["duration_ms"])
                 
-            throughput = "0"
-            sim_time = "0"
-            latency = "0"
-            latency_p50 = "0"
-            latency_p95 = "0"
-            latency_p99 = "0"
-            latency_stddev = "0"
-            bw_mbps = "0"
+                # Extract bandwidth if available
+                if bw_mbps == "0" and "performance" in perf_data and "bandwidth_mbps" in perf_data["performance"]:
+                    bw_mbps = str(perf_data["performance"]["bandwidth_mbps"])
+                
+                # Extract latency metrics if available
+                if "latency" in perf_data:
+                    latency_data = perf_data["latency"]
+                    if latency == "0" and "avg_ns" in latency_data:
+                        latency = str(latency_data["avg_ns"])
+                    if latency_p50 == "0" and "p50_ns" in latency_data:
+                        latency_p50 = str(latency_data["p50_ns"])
+                    if latency_p95 == "0" and "p95_ns" in latency_data:
+                        latency_p95 = str(latency_data["p95_ns"])
+                    if latency_p99 == "0" and "p99_ns" in latency_data:
+                        latency_p99 = str(latency_data["p99_ns"])
+                    if latency_stddev == "0" and "stddev_ns" in latency_data:
+                        latency_stddev = str(latency_data["stddev_ns"])
+                    
+                print(f"{Colors.GREEN}Successfully read performance data from {performance_json_path}{Colors.NC}")
+            except Exception as e:
+                print(f"{Colors.YELLOW}Warning: Failed to read performance.json: {e}{Colors.NC}")
+        
+        # Fallback to console output parsing if no metric files found
+        if throughput == "0" and sim_time == "0":
+            print(f"{Colors.YELLOW}Falling back to console output parsing{Colors.NC}")
+            content = stdout_content
             
-            for line in content.split('\n'):
-                # Extract existing metrics
-                if "Throughput:" in line:
-                    throughput = line.split("Throughput:")[1].strip().split()[0]
-                if "Simulation time:" in line:
-                    sim_time = line.split("Simulation time:")[1].strip().split()[0]
-                    
-                # Extract new metrics from profiler reports
-                if "Period avg latency:" in line:
-                    latency_str = line.split("Period avg latency:")[1].strip().split()[0]
-                    latency = latency_str
-                    
-                if "Period median latency:" in line:
-                    p50_str = line.split("Period median latency:")[1].strip().split()[0]
-                    latency_p50 = p50_str
-                    
-                if "Period 95th percentile:" in line:
-                    p95_str = line.split("Period 95th percentile:")[1].strip().split()[0]
-                    latency_p95 = p95_str
-                    
-                if "Period 99th percentile:" in line:
-                    p99_str = line.split("Period 99th percentile:")[1].strip().split()[0]
-                    latency_p99 = p99_str
-                    
-                if "Period std deviation:" in line:
-                    stddev_str = line.split("Period std deviation:")[1].strip().split()[0]
-                    latency_stddev = stddev_str
-                    
-                if "Average throughput:" in line and "MB/sec" in line:
-                    bw_str = line.split("Average throughput:")[1].strip().split()[0]
-                    bw_mbps = bw_str
-                    
-            return throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps
+            # Fallback to log files if stdout is empty
+            if not content:
+                log_files = list(tc_results_dir.glob("simulation_*.log"))
+                if log_files:
+                    latest_log = max(log_files, key=lambda x: x.stat().st_mtime)
+                    try:
+                        with open(latest_log, 'r') as f:
+                            content = f.read()
+                    except Exception:
+                        pass
             
-        except Exception:
-            return "0", "0", "0", "0", "0", "0", "0", "0"
+            if content:
+                try:
+                    for line in content.split('\n'):
+                        # Extract basic metrics
+                        if "Sim Speed:" in line:
+                            throughput = line.split("Sim Speed:")[1].strip().split()[0]
+                        elif "CPS" in line:
+                            # For basic sim target
+                            parts = line.split("Sim Speed:")
+                            if len(parts) > 1:
+                                throughput = parts[1].strip().split()[0]
+                        if "Simulation time:" in line:
+                            sim_time = line.split("Simulation time:")[1].strip().split()[0]
+                        elif "ms (" in line and "seconds)" in line:
+                            # For basic sim target format
+                            parts = line.split("time:")
+                            if len(parts) > 1:
+                                sim_time = parts[1].strip().split()[0]
+                                
+                        # Extract latency metrics if available  
+                        if "Period avg latency:" in line:
+                            latency = line.split("Period avg latency:")[1].strip().split()[0]
+                        if "Period median latency:" in line:
+                            latency_p50 = line.split("Period median latency:")[1].strip().split()[0]
+                        if "Period 95th percentile:" in line:
+                            latency_p95 = line.split("Period 95th percentile:")[1].strip().split()[0]
+                        if "Period 99th percentile:" in line:
+                            latency_p99 = line.split("Period 99th percentile:")[1].strip().split()[0]
+                        if "Period std deviation:" in line:
+                            latency_stddev = line.split("Period std deviation:")[1].strip().split()[0]
+                        if "Average throughput:" in line and "MB/sec" in line:
+                            bw_mbps = line.split("Average throughput:")[1].strip().split()[0]
+                            
+                except Exception as e:
+                    print(f"{Colors.YELLOW}Warning: Console parsing failed: {e}{Colors.NC}")
+                    
+        return throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps
             
     def create_tc_result(self, tc_results_dir, tc_name, value, status, duration):
         """Create test case result file"""
@@ -367,7 +501,7 @@ Results: {tc_results_dir}
         # Create CSV results
         csv_file = self.sweep_results_dir / "sweep_results.csv"
         with open(csv_file, 'w') as f:
-            f.write(f"TestCase,{self.sweep_config['parameter']},Throughput_TPS,SimTime_MS,Latency_Avg_NS,Latency_P50_NS,Latency_P95_NS,Latency_P99_NS,Latency_StdDev_NS,BW_MBPS,Status\n")
+            f.write(f"TestCase,{self.sweep_config['parameter']},SimSpeed_CPS,SimTime_MS,Latency_Avg_NS,Latency_P50_NS,Latency_P95_NS,Latency_P99_NS,Latency_StdDev_NS,BW_MBPS,Status\n")
             for result in self.results:
                 f.write(result + "\n")
                 
@@ -406,7 +540,7 @@ Parameter vs Performance:
             parts = result.split(',')
             if len(parts) >= 11 and parts[10] == "PASSED":
                 tc_name, param, throughput, simtime, latency_avg, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps, status = parts
-                summary_content += f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} tps ({simtime} ms, {latency_avg} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s)\n"
+                summary_content += f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} cps ({simtime} ms, {latency_avg} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s)\n"
                 
         # Overall status
         if self.failed == 0:
@@ -458,7 +592,7 @@ echo "Using regression results directory: {self.sweep_results_dir}"
             parts = result.split(',')
             if len(parts) >= 11 and parts[10] == "PASSED":
                 tc_name, param, throughput, simtime, latency_avg, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps, status = parts
-                print(f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} tps ({simtime} ms, {latency_avg} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s)")
+                print(f"  {tc_name} ({self.sweep_config['parameter']}={param}): {throughput} cps ({simtime} ms, {latency_avg} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s)")
                 
         if self.failed == 0:
             print(f"{Colors.GREEN}All test cases passed! 🎉{Colors.NC}")
@@ -488,16 +622,20 @@ echo "Using regression results directory: {self.sweep_results_dir}"
 def main():
     parser = argparse.ArgumentParser(description='SystemC Parameter Sweep Test Runner')
     parser.add_argument('sweep_config', help='JSON file defining the parameter sweep')
-    parser.add_argument('batch_name', nargs='?', help='Optional custom batch name')
+    parser.add_argument('batch_name', nargs='?', default='', help='Optional custom batch name')
+    parser.add_argument('target', nargs='?', default='sim', help='Simulation target (sim, sim_ssd, cache_test, web_test)')
     
     args = parser.parse_args()
     
     if not os.path.exists(args.sweep_config):
         print(f"{Colors.RED}Error: Sweep config file '{args.sweep_config}' not found{Colors.NC}")
-        print(f"{Colors.YELLOW}Example: python3 run_sweep.py config/sweeps/write_ratio_sweep.json my_sweep{Colors.NC}")
+        print(f"{Colors.YELLOW}Example: python3 run_sweep.py config/sweeps/write_ratio_sweep.json my_sweep sim_ssd{Colors.NC}")
         sys.exit(1)
+    
+    # Handle empty batch name properly    
+    batch_name = args.batch_name if args.batch_name else None
         
-    runner = SweepRunner(args.sweep_config, args.batch_name)
+    runner = SweepRunner(args.sweep_config, batch_name, args.target)
     exit_code = runner.run()
     sys.exit(exit_code)
 

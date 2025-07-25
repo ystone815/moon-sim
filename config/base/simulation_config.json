@@ -9,7 +9,9 @@
       "debug_enable": false,
       "min_delay_ns": 50.0,
       "max_delay_ns": 150.0
-    }
+    },
+    "ssd_debug_enable": true,
+    "enable_latency_profiler": true
   },
   "logging": {
     "log_directory": "log",

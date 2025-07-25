@@ -1,0 +1,214 @@
+{
+  "ssd": {
+    "general": {
+      "_comment": "SSD general configuration",
+      "capacity_gb": 1024,
+      "form_factor": "M.2_2280",
+      "interface": "PCIe",
+      "debug_enable": false,
+      "model_name": "SystemC NVMe SSD Gen7"
+    },
+    
+    "cache": {
+      "_comment": "SSD Cache (SRAM) configuration",
+      "cache_size_mb": 256,
+      "cache_line_size": 4096,
+      "associativity": 8,
+      "hit_latency_ns": 50.0,
+      "miss_penalty_ns": 500.0,
+      "replacement_policy": "LRU",
+      "write_policy": "write_back",
+      "enable_prefetch": true,
+      "prefetch_degree": 2,
+      
+      "_comment_performance": "Cache performance characteristics",
+      "expected_hit_rate": 0.8,
+      "bandwidth_gbps": 50.0,
+      "power_consumption_mw": 150
+    },
+    
+    "dram": {
+      "_comment": "SSD DRAM buffer configuration",
+      "dram_size_gb": 4,
+      "dram_type": "DDR4",
+      "dram_speed_mhz": 3200,
+      "read_latency_ns": 100.0,
+      "write_latency_ns": 120.0,
+      "refresh_interval_ns": 7800000.0,
+      "bandwidth_gbps": 25.6,
+      "enable_ecc": true,
+      "ecc_overhead_percent": 12.5,
+      
+      "_comment_advanced": "Advanced DRAM features",
+      "burst_length": 8,
+      "banks": 16,
+      "ranks": 2,
+      "power_consumption_mw": 800
+    },
+    
+    "flash": {
+      "_comment": "NAND Flash configuration",
+      "flash_size_gb": 1024,
+      "flash_type": "3D_TLC_NAND",
+      "num_channels": 8,
+      "dies_per_channel": 4,
+      "planes_per_die": 4,
+      "blocks_per_plane": 1024,
+      "pages_per_block": 128,
+      "page_size_kb": 16,
+      
+      "_comment_timing": "Flash timing parameters (realistic values)",
+      "read_latency_us": 25,
+      "program_latency_us": 200,
+      "erase_latency_ms": 2,
+      "io_speed_mhz": 100,
+      "io_width_bits": 8,
+      
+      "_comment_reliability": "Reliability and endurance",
+      "max_pe_cycles": 3000,
+      "error_rate": 1e-15,
+      "bad_block_rate": 0.001,
+      "wear_leveling": true,
+      "ecc_capability": "BCH_72_bit"
+    },
+    
+    "controller": {
+      "_comment": "SSD controller configuration",
+      "cpu_cores": 4,
+      "cpu_frequency_mhz": 800,
+      "sram_size_kb": 512,
+      "firmware_version": "1.0.0",
+      
+      "_comment_algorithms": "Controller algorithms",
+      "gc_algorithm": "greedy",
+      "wear_leveling_algorithm": "dynamic",
+      "bad_block_management": "runtime",
+      "error_correction": "LDPC",
+      
+      "_comment_performance": "Controller performance",
+      "command_processing_ns": 100,
+      "gc_overhead_percent": 5.0,
+      "over_provisioning_percent": 7.0
+    },
+    
+    "interconnect": {
+      "_comment": "Internal SSD interconnect configuration",
+      "cache_to_dram_delay_ns": 10.0,
+      "dram_to_flash_delay_ns": 50.0,
+      "flash_channel_delay_ns": 25.0,
+      "controller_overhead_ns": 100.0,
+      
+      "_comment_bandwidth": "Internal bandwidth limits",
+      "cache_to_dram_gbps": 40.0,
+      "dram_to_flash_gbps": 30.0,
+      "flash_channel_gbps": 8.0
+    },
+    
+    "workload_optimization": {
+      "_comment": "Workload-specific optimizations",
+      "read_cache_policy": "LRU_with_prefetch",
+      "write_cache_policy": "write_back_with_coalescing",
+      "sequential_detection": true,
+      "random_detection": true,
+      "hot_data_identification": true,
+      
+      "_comment_ml_features": "Machine learning optimizations",
+      "enable_ml_prefetch": false,
+      "enable_smart_gc": false,
+      "pattern_learning": false
+    },
+    
+    "power_management": {
+      "_comment": "Power management configuration",
+      "idle_power_mw": 50,
+      "active_power_mw": 2500,
+      "max_power_mw": 6000,
+      "power_states": ["active", "idle", "sleep", "deep_sleep"],
+      
+      "_comment_thermal": "Thermal management",
+      "thermal_throttling": true,
+      "max_temperature_c": 85,
+      "throttle_temperature_c": 80
+    },
+    
+    "nvme_protocol": {
+      "_comment": "NVMe protocol specific settings",
+      "nvme_version": "1.4",
+      "queue_depth": 64,
+      "num_io_queues": 8,
+      "submission_queue_size": 64,
+      "completion_queue_size": 64,
+      
+      "_comment_features": "NVMe features",
+      "namespace_management": true,
+      "format_nvm": true,
+      "secure_erase": true,
+      "trim_support": true,
+      "write_zeroes": true
+    },
+    
+    "quality_of_service": {
+      "_comment": "QoS and performance isolation",
+      "enable_qos": false,
+      "priority_levels": 4,
+      "bandwidth_allocation": {
+        "high_priority": 0.5,
+        "medium_priority": 0.3,
+        "low_priority": 0.2
+      },
+      "latency_targets": {
+        "critical_us": 100,
+        "normal_us": 1000,
+        "background_us": 10000
+      }
+    },
+    
+    "debugging_and_monitoring": {
+      "_comment": "Debug and monitoring configuration",
+      "enable_detailed_logging": false,
+      "log_cache_events": false,
+      "log_dram_events": false,
+      "log_flash_events": false,
+      "log_gc_events": true,
+      "log_wear_leveling": false,
+      
+      "_comment_profiling": "Performance profiling",
+      "enable_latency_profiling": true,
+      "enable_bandwidth_profiling": true,
+      "enable_power_profiling": false,
+      "profiling_interval_ms": 100
+    },
+    
+    "simulation_specific": {
+      "_comment": "Simulation-specific settings",
+      "realistic_timing": true,
+      "simplified_models": false,
+      "fast_simulation_mode": false,
+      "deterministic_behavior": true,
+      
+      "_comment_performance_targets": "Performance expectations",
+      "target_read_iops": 500000,
+      "target_write_iops": 450000,
+      "target_read_bandwidth_mbps": 3500,
+      "target_write_bandwidth_mbps": 3000,
+      "target_latency_us": 200
+    }
+  },
+  
+  "_metadata": {
+    "description": "High-performance NVMe SSD configuration with PCIe Gen7 interface",
+    "version": "1.0",
+    "compatible_architectures": ["x86_64", "arm64"],
+    "target_workloads": ["enterprise", "datacenter", "high_performance_computing"],
+    "benchmark_results": {
+      "sequential_read_mbps": 7000,
+      "sequential_write_mbps": 6500,
+      "random_read_iops": 1000000,
+      "random_write_iops": 900000,
+      "mixed_workload_iops": 750000,
+      "latency_99_percentile_us": 500
+    },
+    "author": "SystemC SSD Simulator",
+    "date": "2025-01-25"
+  }
+}

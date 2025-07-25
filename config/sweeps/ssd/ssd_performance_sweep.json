@@ -1,0 +1,13 @@
+{
+  "sweep_name": "ssd_comprehensive_performance",
+  "description": "Comprehensive SSD performance sweep across write ratios",
+  "target": "sim_ssd",
+  "base_config": "config/base",
+  "parameter": "write_percentage",
+  "config_file": "traffic_generator_config.json",
+  "start": 0,
+  "end": 100,
+  "step": 20,
+  "expected_points": 6,
+  "version": "1.0"
+}
