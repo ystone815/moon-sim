@@ -10,34 +10,117 @@
 #include "packet/pcie_packet.h"
 #include "common/error_handling.h"
 
-// PCIe Link utilization tracking
+// PCIe Link utilization tracking with cumulative profiling
 struct PCIeLinkUtilization {
-    double current_utilization;     // Current link utilization (0.0 - 1.0)
+    double current_utilization;     // Current link utilization (0.0 - 100.0)
     double average_utilization;     // Moving average utilization
     uint64_t total_bytes_transmitted;
     uint64_t total_transmission_time_ns;
     sc_time last_update_time;
     
+    // Cumulative utilization profiling
+    double cumulative_active_time_ns;   // Total time spent actively transmitting
+    double cumulative_idle_time_ns;     // Total time spent idle
+    sc_time simulation_start_time;      // When profiling started
+    double peak_utilization;            // Maximum utilization observed
+    double min_utilization;             // Minimum utilization observed (when active)
+    uint64_t total_packets_processed;   // Total number of packets
+    
+    // Utilization histogram (for distribution analysis)
+    struct UtilizationBin {
+        double min_util, max_util;
+        uint64_t count;
+        UtilizationBin(double min_u, double max_u) : min_util(min_u), max_util(max_u), count(0) {}
+    };
+    std::vector<UtilizationBin> utilization_histogram;
+    
     PCIeLinkUtilization() : current_utilization(0.0), average_utilization(0.0),
                            total_bytes_transmitted(0), total_transmission_time_ns(0),
-                           last_update_time(SC_ZERO_TIME) {}
+                           last_update_time(SC_ZERO_TIME), cumulative_active_time_ns(0.0),
+                           cumulative_idle_time_ns(0.0), simulation_start_time(SC_ZERO_TIME),
+                           peak_utilization(0.0), min_utilization(100.0), total_packets_processed(0) {
+        // Initialize utilization histogram (10% bins)
+        for (int i = 0; i < 10; i++) {
+            utilization_histogram.emplace_back(i * 10.0, (i + 1) * 10.0);
+        }
+    }
+    
+    void start_profiling() {
+        simulation_start_time = sc_time_stamp();
+    }
     
     void update_utilization(uint32_t packet_size, double transmission_time_ns) {
         total_bytes_transmitted += packet_size;
         total_transmission_time_ns += static_cast<uint64_t>(transmission_time_ns);
+        total_packets_processed++;
         
         sc_time current_time = sc_time_stamp();
+        
+        // Initialize profiling if not started
+        if (simulation_start_time == SC_ZERO_TIME) {
+            start_profiling();
+        }
+        
         if (last_update_time != SC_ZERO_TIME) {
             double time_window_ns = (current_time - last_update_time).to_seconds() * 1e9;
             if (time_window_ns > 0) {
+                // Calculate current utilization as percentage
                 current_utilization = (transmission_time_ns / time_window_ns) * 100.0;
+                
+                // Clamp to reasonable bounds
+                current_utilization = std::min(100.0, std::max(0.0, current_utilization));
+                
+                // Update peak and minimum utilization
+                peak_utilization = std::max(peak_utilization, current_utilization);
+                if (current_utilization > 0.0) {
+                    min_utilization = std::min(min_utilization, current_utilization);
+                }
                 
                 // Update moving average (exponential smoothing)
                 const double alpha = 0.1;  // Smoothing factor
                 average_utilization = alpha * current_utilization + (1.0 - alpha) * average_utilization;
+                
+                // Update cumulative times
+                cumulative_active_time_ns += transmission_time_ns;
+                cumulative_idle_time_ns += (time_window_ns - transmission_time_ns);
+                
+                // Update histogram
+                update_histogram(current_utilization);
             }
         }
         last_update_time = current_time;
+    }
+    
+    void update_histogram(double utilization) {
+        for (auto& bin : utilization_histogram) {
+            if (utilization >= bin.min_util && utilization < bin.max_util) {
+                bin.count++;
+                break;
+            }
+        }
+        // Handle 100% case
+        if (utilization >= 100.0 && !utilization_histogram.empty()) {
+            utilization_histogram.back().count++;
+        }
+    }
+    
+    double get_overall_utilization_percentage() const {
+        if (simulation_start_time == SC_ZERO_TIME) return 0.0;
+        
+        double total_simulation_time_ns = (sc_time_stamp() - simulation_start_time).to_seconds() * 1e9;
+        if (total_simulation_time_ns <= 0.0) return 0.0;
+        
+        return (cumulative_active_time_ns / total_simulation_time_ns) * 100.0;
+    }
+    
+    double get_average_throughput_mbps() const {
+        if (total_transmission_time_ns == 0) return 0.0;
+        
+        // Convert bytes to MB and ns to seconds
+        double total_mb = total_bytes_transmitted / (1024.0 * 1024.0);
+        double total_seconds = total_transmission_time_ns / 1e9;
+        
+        return total_mb / total_seconds;
     }
 };
 

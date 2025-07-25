@@ -180,10 +180,18 @@ int sc_main(int argc, char* argv[]) {
     std::cout << "  CRC Error Rate: " << std::scientific << pcie_downstream.get_crc_error_rate() << std::endl;
     std::cout << "  Average Processing Time: " << std::fixed << std::setprecision(1) 
               << pcie_downstream.get_average_processing_time_ns() << " ns" << std::endl;
+    std::cout << "  Current Utilization: " << std::setprecision(1) 
+              << pcie_downstream.get_current_utilization() << "%" << std::endl;
+    std::cout << "  Average Utilization: " << std::setprecision(1) 
+              << pcie_downstream.get_average_utilization() << "%" << std::endl;
     
     std::cout << "\nPCIe Upstream Statistics:" << std::endl;
     std::cout << "  Packets Processed: " << pcie_upstream.get_total_packets_processed() << std::endl;
     std::cout << "  CRC Errors: " << pcie_upstream.get_total_crc_errors() << std::endl;
+    std::cout << "  Current Utilization: " << std::setprecision(1) 
+              << pcie_upstream.get_current_utilization() << "%" << std::endl;
+    std::cout << "  Average Utilization: " << std::setprecision(1) 
+              << pcie_upstream.get_average_utilization() << "%" << std::endl;
     std::cout << "====================================" << std::endl;
     
     // Print profiler results from HostSystem (includes bandwidth and latency if enabled)
@@ -244,8 +252,12 @@ int sc_main(int argc, char* argv[]) {
             metrics_csv << "stddev_latency_ns," << std::setprecision(1) << stddev_latency_ns << ",ns\n";
             metrics_csv << "pcie_downstream_packets," << pcie_downstream.get_total_packets_processed() << ",count\n";
             metrics_csv << "pcie_downstream_crc_errors," << pcie_downstream.get_total_crc_errors() << ",count\n";
+            metrics_csv << "pcie_downstream_utilization_current," << std::setprecision(1) << pcie_downstream.get_current_utilization() << ",percent\n";
+            metrics_csv << "pcie_downstream_utilization_avg," << std::setprecision(1) << pcie_downstream.get_average_utilization() << ",percent\n";
             metrics_csv << "pcie_upstream_packets," << pcie_upstream.get_total_packets_processed() << ",count\n";
             metrics_csv << "pcie_upstream_crc_errors," << pcie_upstream.get_total_crc_errors() << ",count\n";
+            metrics_csv << "pcie_upstream_utilization_current," << std::setprecision(1) << pcie_upstream.get_current_utilization() << ",percent\n";
+            metrics_csv << "pcie_upstream_utilization_avg," << std::setprecision(1) << pcie_upstream.get_average_utilization() << ",percent\n";
             metrics_csv.close();
         }
         
@@ -277,8 +289,12 @@ int sc_main(int argc, char* argv[]) {
             performance_json << "    \"lanes\": " << static_cast<int>(pcie_lanes) << ",\n";
             performance_json << "    \"downstream_packets\": " << pcie_downstream.get_total_packets_processed() << ",\n";
             performance_json << "    \"downstream_crc_errors\": " << pcie_downstream.get_total_crc_errors() << ",\n";
+            performance_json << "    \"downstream_utilization_current\": " << std::setprecision(1) << pcie_downstream.get_current_utilization() << ",\n";
+            performance_json << "    \"downstream_utilization_avg\": " << std::setprecision(1) << pcie_downstream.get_average_utilization() << ",\n";
             performance_json << "    \"upstream_packets\": " << pcie_upstream.get_total_packets_processed() << ",\n";
-            performance_json << "    \"upstream_crc_errors\": " << pcie_upstream.get_total_crc_errors() << "\n";
+            performance_json << "    \"upstream_crc_errors\": " << pcie_upstream.get_total_crc_errors() << ",\n";
+            performance_json << "    \"upstream_utilization_current\": " << std::setprecision(1) << pcie_upstream.get_current_utilization() << ",\n";
+            performance_json << "    \"upstream_utilization_avg\": " << std::setprecision(1) << pcie_upstream.get_average_utilization() << "\n";
             performance_json << "  }\n";
             performance_json << "}\n";
             performance_json.close();
