@@ -1,0 +1,79 @@
+{
+  "nand_flash": {
+    "timing": {
+      "_comment": "NAND Flash timing parameters in nanoseconds",
+      "tR_ns": 25000,
+      "tProg_ns": 200000,
+      "tErase_ns": 2000000,
+      "io_speed_mhz": 100.0,
+      "io_width_bits": 8,
+      
+      "_comment_timing": "Timing variation and realistic delays",
+      "timing_variation_percent": 5.0,
+      "temperature_effect": false
+    },
+    
+    "geometry": {
+      "_comment": "Flash memory organization",
+      "planes": 4,
+      "blocks_per_plane": 1024,
+      "wordlines_per_block": 128,
+      "ssl_per_wordline": 4,
+      "pages_per_ssl": 32,
+      "page_size_bytes": 16384,
+      
+      "_comment_capacity": "Total capacity calculation",
+      "_total_capacity_gb": "4 planes × 1024 blocks/plane × 128 WL × 4 SSL × 32 pages × 16KB = 1TB"
+    },
+    
+    "reliability": {
+      "_comment": "Reliability and wear-out parameters",
+      "max_pe_cycles": 100000,
+      "program_failure_rate": 0.001,
+      "erase_failure_rate": 0.01,
+      "read_disturb_enabled": false,
+      "wear_leveling_enabled": true
+    },
+    
+    "address_translation": {
+      "_comment": "Address translation policy settings",
+      "policy": "LINEAR",
+      "bad_block_management": true,
+      "spare_blocks_per_plane": 64,
+      
+      "_comment_policies": "Available policies: LINEAR, INTERLEAVED, WEAR_LEVELING"
+    },
+    
+    "debug": {
+      "_comment": "Debug and monitoring settings",
+      "flash_controller_debug": false,
+      "address_translator_debug": false,
+      "timing_debug": false,
+      "wear_leveling_debug": false
+    },
+    
+    "performance": {
+      "_comment": "Performance optimization settings",
+      "plane_interleaving": true,
+      "cache_program": false,
+      "multi_plane_operation": false,
+      
+      "_comment_optimization": "Advanced features for high-performance simulation"
+    }
+  },
+  
+  "simulation": {
+    "_comment": "Integration with existing simulation framework",
+    "replace_memory_with_flash": false,
+    "flash_as_secondary_storage": true,
+    "hybrid_memory_flash": false
+  },
+  
+  "_metadata": {
+    "description": "NAND Flash configuration for SystemC simulation",
+    "version": "1.0",
+    "compatible_with": "StandardNANDFlash template (4 planes, 1024 blocks/plane, 128 pages/block)",
+    "author": "SystemC Flash Simulator",
+    "date": "2025-01-25"
+  }
+}

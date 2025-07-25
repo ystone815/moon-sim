@@ -45,6 +45,7 @@ namespace soc_sim {
             constexpr const char* INVALID_PACKET_TYPE = "E003";
             constexpr const char* CONFIGURATION_ERROR = "E004";
             constexpr const char* RESOURCE_EXHAUSTED = "E005";
+            constexpr const char* DEVICE_ERROR = "E006";
         }
         
         // Convenience macros for common error reporting
