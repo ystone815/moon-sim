@@ -1,6 +1,7 @@
 # Build artifacts
 obj/
 sim
+sim_ssd
 web_test
 cache_test
 *.o

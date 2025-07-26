@@ -9,7 +9,40 @@
 #include "packet/base_packet.h"
 #include "common/json_config.h"
 
-// DRAM timing parameters (based on DDR4-3200)
+/*
+ * MOON-SIM: Modular Object-Oriented Network Simulator
+ * DRAM Controller - Multi-standard memory controller (DDR4/DDR5/LPDDR5)
+ */
+
+// Memory technology types
+enum class MemoryType {
+    DDR4,       // Double Data Rate 4
+    DDR5,       // Double Data Rate 5  
+    LPDDR5      // Low Power DDR5
+};
+
+// Speed grades for different memory types
+enum class SpeedGrade {
+    // DDR4 speed grades
+    DDR4_2400,  // DDR4-2400 (1200 MHz)
+    DDR4_2666,  // DDR4-2666 (1333 MHz)
+    DDR4_3200,  // DDR4-3200 (1600 MHz)
+    DDR4_4266,  // DDR4-4266 (2133 MHz)
+    
+    // DDR5 speed grades  
+    DDR5_4800,  // DDR5-4800 (2400 MHz)
+    DDR5_5600,  // DDR5-5600 (2800 MHz)
+    DDR5_6400,  // DDR5-6400 (3200 MHz)
+    DDR5_8400,  // DDR5-8400 (4200 MHz)
+    
+    // LPDDR5 speed grades
+    LPDDR5_5500,  // LPDDR5-5500 (2750 MHz)
+    LPDDR5_6400,  // LPDDR5-6400 (3200 MHz)
+    LPDDR5_7500,  // LPDDR5-7500 (3750 MHz)
+    LPDDR5_8533   // LPDDR5-8533 (4266 MHz)
+};
+
+// DRAM timing parameters
 struct DramTiming {
     sc_time tCL;        // CAS Latency (Column Address Strobe)
     sc_time tRCD;       // RAS to CAS Delay
@@ -32,6 +65,37 @@ struct DramTiming {
           tBurst(sc_time(4, SC_NS))     // 4 ns burst (8 beats at 3200 MT/s)
     {
     }
+    
+    // Constructor with memory type and speed grade
+    DramTiming(MemoryType type, SpeedGrade grade);
+};
+
+// DRAM Timing Factory for different memory types
+class DramTimingFactory {
+public:
+    // Create timing configuration for specific memory type and speed
+    static DramTiming create(MemoryType type, SpeedGrade grade);
+    
+    // Create timing with default speed for each type
+    static DramTiming createDDR4(SpeedGrade grade = SpeedGrade::DDR4_3200);
+    static DramTiming createDDR5(SpeedGrade grade = SpeedGrade::DDR5_4800);
+    static DramTiming createLPDDR5(SpeedGrade grade = SpeedGrade::LPDDR5_6400);
+    
+    // Get default speed grade for memory type
+    static SpeedGrade getDefaultSpeedGrade(MemoryType type);
+    
+    // Validate speed grade compatibility with memory type
+    static bool isSpeedGradeValid(MemoryType type, SpeedGrade grade);
+    
+    // Convert speed grade to string for debugging
+    static std::string speedGradeToString(SpeedGrade grade);
+    static std::string memoryTypeToString(MemoryType type);
+
+private:
+    // Internal timing calculation helpers
+    static DramTiming createDDR4Timing(SpeedGrade grade);
+    static DramTiming createDDR5Timing(SpeedGrade grade);
+    static DramTiming createLPDDR5Timing(SpeedGrade grade);
 };
 
 // DRAM command types
@@ -157,16 +221,51 @@ SC_MODULE(DramController) {
         }
     }
     
-    // JSON-based constructor
+    // JSON-based constructor with automatic memory type detection
     DramController(sc_module_name name, const JsonConfig& config)
         : DramController(name,
                         create_timing_from_config(config),
-                        config.get_int("page_size", 1024),
-                        config.get_int("burst_length", 8),
-                        config.get_bool("auto_precharge", true),
-                        config.get_bool("refresh_enable", true),
-                        config.get_bool("debug_enable", false))
+                        config.get_int("dram.page_size", 1024),
+                        config.get_int("dram.burst_length", 8),
+                        config.get_bool("dram.auto_precharge", true),
+                        config.get_bool("dram.refresh_enable", true),
+                        config.get_bool("dram.debug_enable", false))
     {
+        // Print memory configuration info
+        if (config.get_bool("dram.debug_enable", false)) {
+            auto memory_type = parseMemoryType(config.get_string("dram.memory_type", "DDR4"));
+            auto speed_grade = parseSpeedGrade(config.get_string("dram.speed_grade", "DDR4_3200"));
+            
+            std::cout << "MOON-SIM DRAM Controller initialized:" << std::endl;
+            std::cout << "  Memory Type: " << DramTimingFactory::memoryTypeToString(memory_type) << std::endl;
+            std::cout << "  Speed Grade: " << DramTimingFactory::speedGradeToString(speed_grade) << std::endl;
+            std::cout << "  Banks: " << NUM_BANKS << ", Ranks: " << NUM_RANKS << std::endl;
+        }
+    }
+    
+    // Memory type-based constructor
+    DramController(sc_module_name name, 
+                   MemoryType memory_type = MemoryType::DDR4,
+                   SpeedGrade speed_grade = SpeedGrade::DDR4_3200,
+                   int page_size = 1024,
+                   int burst_length = 8,
+                   bool auto_precharge = true,
+                   bool refresh_enable = true,
+                   bool debug_enable = false)
+        : DramController(name,
+                        DramTimingFactory::create(memory_type, speed_grade),
+                        page_size,
+                        burst_length,
+                        auto_precharge,
+                        refresh_enable,
+                        debug_enable)
+    {
+        if (debug_enable) {
+            std::cout << "MOON-SIM DRAM Controller initialized:" << std::endl;
+            std::cout << "  Memory Type: " << DramTimingFactory::memoryTypeToString(memory_type) << std::endl;
+            std::cout << "  Speed Grade: " << DramTimingFactory::speedGradeToString(speed_grade) << std::endl;
+            std::cout << "  Banks: " << NUM_BANKS << ", Ranks: " << NUM_RANKS << std::endl;
+        }
     }
     
     // Get DRAM statistics
@@ -200,16 +299,53 @@ private:
     
     // Helper function to create timing from config
     static DramTiming create_timing_from_config(const JsonConfig& config) {
-        DramTiming timing;
-        timing.tCL = sc_time(config.get_int("tCL_ns", 14), SC_NS);
-        timing.tRCD = sc_time(config.get_int("tRCD_ns", 14), SC_NS);
-        timing.tRP = sc_time(config.get_int("tRP_ns", 14), SC_NS);
-        timing.tRAS = sc_time(config.get_int("tRAS_ns", 32), SC_NS);
-        timing.tWR = sc_time(config.get_int("tWR_ns", 15), SC_NS);
-        timing.tRFC = sc_time(config.get_int("tRFC_ns", 350), SC_NS);
-        timing.tREFI = sc_time(config.get_int("tREFI_ns", 7800), SC_NS);
-        timing.tBurst = sc_time(config.get_int("tBurst_ns", 4), SC_NS);
-        return timing;
+        // Check if custom timings are enabled
+        if (config.get_bool("dram.custom_timings.enable_custom", false)) {
+            // Use custom timing values
+            DramTiming timing;
+            timing.tCL = sc_time(config.get_double("dram.custom_timings.tCL_ns", 14), SC_NS);
+            timing.tRCD = sc_time(config.get_double("dram.custom_timings.tRCD_ns", 14), SC_NS);
+            timing.tRP = sc_time(config.get_double("dram.custom_timings.tRP_ns", 14), SC_NS);
+            timing.tRAS = sc_time(config.get_double("dram.custom_timings.tRAS_ns", 32), SC_NS);
+            timing.tWR = sc_time(config.get_double("dram.custom_timings.tWR_ns", 15), SC_NS);
+            timing.tRFC = sc_time(config.get_double("dram.custom_timings.tRFC_ns", 350), SC_NS);
+            timing.tREFI = sc_time(config.get_double("dram.custom_timings.tREFI_ns", 7800), SC_NS);
+            timing.tBurst = sc_time(config.get_double("dram.custom_timings.tBurst_ns", 4), SC_NS);
+            return timing;
+        } else {
+            // Use automatic timing based on memory type and speed grade
+            auto memory_type = parseMemoryType(config.get_string("dram.memory_type", "DDR4"));
+            auto speed_grade = parseSpeedGrade(config.get_string("dram.speed_grade", "DDR4_3200"));
+            return DramTimingFactory::create(memory_type, speed_grade);
+        }
+    }
+    
+    // Helper functions to parse memory type and speed grade from strings
+    static MemoryType parseMemoryType(const std::string& type_str) {
+        if (type_str == "DDR4") return MemoryType::DDR4;
+        if (type_str == "DDR5") return MemoryType::DDR5;
+        if (type_str == "LPDDR5") return MemoryType::LPDDR5;
+        
+        std::cerr << "Warning: Unknown memory type '" << type_str << "', defaulting to DDR4" << std::endl;
+        return MemoryType::DDR4;
+    }
+    
+    static SpeedGrade parseSpeedGrade(const std::string& grade_str) {
+        if (grade_str == "DDR4_2400") return SpeedGrade::DDR4_2400;
+        if (grade_str == "DDR4_2666") return SpeedGrade::DDR4_2666;
+        if (grade_str == "DDR4_3200") return SpeedGrade::DDR4_3200;
+        if (grade_str == "DDR4_4266") return SpeedGrade::DDR4_4266;
+        if (grade_str == "DDR5_4800") return SpeedGrade::DDR5_4800;
+        if (grade_str == "DDR5_5600") return SpeedGrade::DDR5_5600;
+        if (grade_str == "DDR5_6400") return SpeedGrade::DDR5_6400;
+        if (grade_str == "DDR5_8400") return SpeedGrade::DDR5_8400;
+        if (grade_str == "LPDDR5_5500") return SpeedGrade::LPDDR5_5500;
+        if (grade_str == "LPDDR5_6400") return SpeedGrade::LPDDR5_6400;
+        if (grade_str == "LPDDR5_7500") return SpeedGrade::LPDDR5_7500;
+        if (grade_str == "LPDDR5_8533") return SpeedGrade::LPDDR5_8533;
+        
+        std::cerr << "Warning: Unknown speed grade '" << grade_str << "', defaulting to DDR4_3200" << std::endl;
+        return SpeedGrade::DDR4_3200;
     }
     
     // Main memory controller process
@@ -420,5 +556,225 @@ private:
         return (address >> offset_bits) & ((m_page_size/64) - 1);
     }
 };
+
+// DramTiming constructor implementation
+inline DramTiming::DramTiming(MemoryType type, SpeedGrade grade) {
+    *this = DramTimingFactory::create(type, grade);
+}
+
+// DramTimingFactory implementation
+inline DramTiming DramTimingFactory::create(MemoryType type, SpeedGrade grade) {
+    if (!isSpeedGradeValid(type, grade)) {
+        std::cerr << "Warning: Invalid speed grade " << speedGradeToString(grade) 
+                  << " for memory type " << memoryTypeToString(type) 
+                  << ". Using default." << std::endl;
+        grade = getDefaultSpeedGrade(type);
+    }
+    
+    switch (type) {
+        case MemoryType::DDR4:   return createDDR4Timing(grade);
+        case MemoryType::DDR5:   return createDDR5Timing(grade);
+        case MemoryType::LPDDR5: return createLPDDR5Timing(grade);
+        default: return createDDR4Timing(SpeedGrade::DDR4_3200);
+    }
+}
+
+inline DramTiming DramTimingFactory::createDDR4(SpeedGrade grade) {
+    return createDDR4Timing(grade);
+}
+
+inline DramTiming DramTimingFactory::createDDR5(SpeedGrade grade) {
+    return createDDR5Timing(grade);
+}
+
+inline DramTiming DramTimingFactory::createLPDDR5(SpeedGrade grade) {
+    return createLPDDR5Timing(grade);
+}
+
+inline SpeedGrade DramTimingFactory::getDefaultSpeedGrade(MemoryType type) {
+    switch (type) {
+        case MemoryType::DDR4:   return SpeedGrade::DDR4_3200;
+        case MemoryType::DDR5:   return SpeedGrade::DDR5_4800;
+        case MemoryType::LPDDR5: return SpeedGrade::LPDDR5_6400;
+        default: return SpeedGrade::DDR4_3200;
+    }
+}
+
+inline bool DramTimingFactory::isSpeedGradeValid(MemoryType type, SpeedGrade grade) {
+    switch (type) {
+        case MemoryType::DDR4:
+            return (grade >= SpeedGrade::DDR4_2400 && grade <= SpeedGrade::DDR4_4266);
+        case MemoryType::DDR5:
+            return (grade >= SpeedGrade::DDR5_4800 && grade <= SpeedGrade::DDR5_8400);
+        case MemoryType::LPDDR5:
+            return (grade >= SpeedGrade::LPDDR5_5500 && grade <= SpeedGrade::LPDDR5_8533);
+        default: return false;
+    }
+}
+
+inline std::string DramTimingFactory::speedGradeToString(SpeedGrade grade) {
+    switch (grade) {
+        case SpeedGrade::DDR4_2400:  return "DDR4-2400";
+        case SpeedGrade::DDR4_2666:  return "DDR4-2666";
+        case SpeedGrade::DDR4_3200:  return "DDR4-3200";
+        case SpeedGrade::DDR4_4266:  return "DDR4-4266";
+        case SpeedGrade::DDR5_4800:  return "DDR5-4800";
+        case SpeedGrade::DDR5_5600:  return "DDR5-5600";
+        case SpeedGrade::DDR5_6400:  return "DDR5-6400";
+        case SpeedGrade::DDR5_8400:  return "DDR5-8400";
+        case SpeedGrade::LPDDR5_5500: return "LPDDR5-5500";
+        case SpeedGrade::LPDDR5_6400: return "LPDDR5-6400";
+        case SpeedGrade::LPDDR5_7500: return "LPDDR5-7500";
+        case SpeedGrade::LPDDR5_8533: return "LPDDR5-8533";
+        default: return "Unknown";
+    }
+}
+
+inline std::string DramTimingFactory::memoryTypeToString(MemoryType type) {
+    switch (type) {
+        case MemoryType::DDR4:   return "DDR4";
+        case MemoryType::DDR5:   return "DDR5";
+        case MemoryType::LPDDR5: return "LPDDR5";
+        default: return "Unknown";
+    }
+}
+
+inline DramTiming DramTimingFactory::createDDR4Timing(SpeedGrade grade) {
+    DramTiming timing;
+    
+    switch (grade) {
+        case SpeedGrade::DDR4_2400:  // DDR4-2400 (1200 MHz, 0.833 ns cycle)
+            timing.tCL = sc_time(15, SC_NS);     // CL=18, 18 * 0.833ns = 15ns
+            timing.tRCD = sc_time(15, SC_NS);    // tRCD=18
+            timing.tRP = sc_time(15, SC_NS);     // tRP=18
+            timing.tRAS = sc_time(35, SC_NS);    // tRAS=42
+            timing.tBurst = sc_time(3.33, SC_NS); // 4 beats * 0.833ns
+            break;
+            
+        case SpeedGrade::DDR4_2666:  // DDR4-2666 (1333 MHz, 0.75 ns cycle)
+            timing.tCL = sc_time(13.5, SC_NS);   // CL=18, 18 * 0.75ns = 13.5ns
+            timing.tRCD = sc_time(13.5, SC_NS);  // tRCD=18
+            timing.tRP = sc_time(13.5, SC_NS);   // tRP=18
+            timing.tRAS = sc_time(31.5, SC_NS);  // tRAS=42
+            timing.tBurst = sc_time(3, SC_NS);   // 4 beats * 0.75ns
+            break;
+            
+        case SpeedGrade::DDR4_3200:  // DDR4-3200 (1600 MHz, 0.625 ns cycle)
+        default:
+            timing.tCL = sc_time(14, SC_NS);     // CL=22, 22 * 0.625ns = 13.75ns ≈ 14ns
+            timing.tRCD = sc_time(14, SC_NS);    // tRCD=22
+            timing.tRP = sc_time(14, SC_NS);     // tRP=22
+            timing.tRAS = sc_time(32, SC_NS);    // tRAS=52
+            timing.tBurst = sc_time(2.5, SC_NS); // 4 beats * 0.625ns
+            break;
+            
+        case SpeedGrade::DDR4_4266:  // DDR4-4266 (2133 MHz, 0.468 ns cycle)
+            timing.tCL = sc_time(13, SC_NS);     // CL=28, 28 * 0.468ns = 13.1ns
+            timing.tRCD = sc_time(13, SC_NS);    // tRCD=28
+            timing.tRP = sc_time(13, SC_NS);     // tRP=28
+            timing.tRAS = sc_time(30, SC_NS);    // tRAS=64
+            timing.tBurst = sc_time(1.87, SC_NS); // 4 beats * 0.468ns
+            break;
+    }
+    
+    // Common DDR4 parameters
+    timing.tWR = sc_time(15, SC_NS);
+    timing.tRFC = sc_time(350, SC_NS);     // 350ns for 8Gb chips
+    timing.tREFI = sc_time(7800, SC_NS);   // 7.8μs refresh interval
+    
+    return timing;
+}
+
+inline DramTiming DramTimingFactory::createDDR5Timing(SpeedGrade grade) {
+    DramTiming timing;
+    
+    switch (grade) {
+        case SpeedGrade::DDR5_4800:  // DDR5-4800 (2400 MHz, 0.417 ns cycle)
+        default:
+            timing.tCL = sc_time(10, SC_NS);     // CL=24, 24 * 0.417ns = 10ns
+            timing.tRCD = sc_time(10, SC_NS);    // tRCD=24
+            timing.tRP = sc_time(10, SC_NS);     // tRP=24
+            timing.tRAS = sc_time(25, SC_NS);    // tRAS=60
+            timing.tBurst = sc_time(1.67, SC_NS); // 4 beats * 0.417ns
+            break;
+            
+        case SpeedGrade::DDR5_5600:  // DDR5-5600 (2800 MHz, 0.357 ns cycle)
+            timing.tCL = sc_time(9, SC_NS);      // CL=25, 25 * 0.357ns = 8.93ns
+            timing.tRCD = sc_time(9, SC_NS);     // tRCD=25
+            timing.tRP = sc_time(9, SC_NS);      // tRP=25
+            timing.tRAS = sc_time(23, SC_NS);    // tRAS=65
+            timing.tBurst = sc_time(1.43, SC_NS); // 4 beats * 0.357ns
+            break;
+            
+        case SpeedGrade::DDR5_6400:  // DDR5-6400 (3200 MHz, 0.3125 ns cycle)
+            timing.tCL = sc_time(8, SC_NS);      // CL=26, 26 * 0.3125ns = 8.125ns
+            timing.tRCD = sc_time(8, SC_NS);     // tRCD=26
+            timing.tRP = sc_time(8, SC_NS);      // tRP=26
+            timing.tRAS = sc_time(21, SC_NS);    // tRAS=68
+            timing.tBurst = sc_time(1.25, SC_NS); // 4 beats * 0.3125ns
+            break;
+            
+        case SpeedGrade::DDR5_8400:  // DDR5-8400 (4200 MHz, 0.238 ns cycle)
+            timing.tCL = sc_time(7, SC_NS);      // CL=30, 30 * 0.238ns = 7.14ns
+            timing.tRCD = sc_time(7, SC_NS);     // tRCD=30
+            timing.tRP = sc_time(7, SC_NS);      // tRP=30
+            timing.tRAS = sc_time(18, SC_NS);    // tRAS=76
+            timing.tBurst = sc_time(0.95, SC_NS); // 4 beats * 0.238ns
+            break;
+    }
+    
+    // DDR5 specific parameters
+    timing.tWR = sc_time(12, SC_NS);       // Faster write recovery
+    timing.tRFC = sc_time(295, SC_NS);     // 295ns for 16Gb chips
+    timing.tREFI = sc_time(3900, SC_NS);   // 3.9μs refresh interval (2x faster)
+    
+    return timing;
+}
+
+inline DramTiming DramTimingFactory::createLPDDR5Timing(SpeedGrade grade) {
+    DramTiming timing;
+    
+    switch (grade) {
+        case SpeedGrade::LPDDR5_5500: // LPDDR5-5500 (2750 MHz, 0.364 ns cycle)
+            timing.tCL = sc_time(8, SC_NS);     // CL=22, 22 * 0.364ns = 8ns
+            timing.tRCD = sc_time(8, SC_NS);    // tRCD=22
+            timing.tRP = sc_time(8, SC_NS);     // tRP=22
+            timing.tRAS = sc_time(18, SC_NS);   // tRAS=50
+            timing.tBurst = sc_time(1.45, SC_NS); // 4 beats * 0.364ns
+            break;
+            
+        case SpeedGrade::LPDDR5_6400: // LPDDR5-6400 (3200 MHz, 0.3125 ns cycle)
+        default:
+            timing.tCL = sc_time(7, SC_NS);     // CL=22, 22 * 0.3125ns = 6.875ns
+            timing.tRCD = sc_time(7, SC_NS);    // tRCD=22
+            timing.tRP = sc_time(7, SC_NS);     // tRP=22
+            timing.tRAS = sc_time(16, SC_NS);   // tRAS=52
+            timing.tBurst = sc_time(1.25, SC_NS); // 4 beats * 0.3125ns
+            break;
+            
+        case SpeedGrade::LPDDR5_7500: // LPDDR5-7500 (3750 MHz, 0.267 ns cycle)
+            timing.tCL = sc_time(6, SC_NS);     // CL=22, 22 * 0.267ns = 5.87ns
+            timing.tRCD = sc_time(6, SC_NS);    // tRCD=22
+            timing.tRP = sc_time(6, SC_NS);     // tRP=22
+            timing.tRAS = sc_time(14, SC_NS);   // tRAS=54
+            timing.tBurst = sc_time(1.07, SC_NS); // 4 beats * 0.267ns
+            break;
+            
+        case SpeedGrade::LPDDR5_8533: // LPDDR5-8533 (4266 MHz, 0.234 ns cycle)
+            timing.tCL = sc_time(5, SC_NS);     // CL=22, 22 * 0.234ns = 5.15ns
+            timing.tRCD = sc_time(5, SC_NS);    // tRCD=22
+            timing.tRP = sc_time(5, SC_NS);     // tRP=22
+            timing.tRAS = sc_time(13, SC_NS);   // tRAS=56
+            timing.tBurst = sc_time(0.94, SC_NS); // 4 beats * 0.234ns
+            break;
+    }
+    
+    // LPDDR5 specific parameters (optimized for mobile)
+    timing.tWR = sc_time(10, SC_NS);       // Fast write recovery
+    timing.tRFC = sc_time(180, SC_NS);     // 180ns refresh (mobile optimized)
+    timing.tREFI = sc_time(3900, SC_NS);   // 3.9μs refresh interval
+    
+    return timing;
+}
 
 #endif

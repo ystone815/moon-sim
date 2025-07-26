@@ -96,6 +96,14 @@ MOON-SIM implements a high-performance SystemC-based SoC architecture simulation
    - Configurable data types and memory sizes via template parameters
    - Bounds checking with comprehensive error handling
 
+6. **DramController** (`include/base/dram_controller.h` - Template)
+   - **Multi-standard support**: DDR4, DDR5, LPDDR5 memory types
+   - **Automatic timing calculation**: Speed grade-based parameter generation
+   - **Realistic timing models**: Accurate tCL, tRCD, tRP, tRAS parameters
+   - **JSON configuration**: Memory type and speed grade selection
+   - **Performance variants**: DDR4-3200/4266, DDR5-4800/6400/8400, LPDDR5-6400/8533
+   - **Banking and refresh**: Configurable banks, ranks, and refresh cycles
+
 ### Packet System
 
 - **BasePacket** (`include/packet/base_packet.h`): Abstract base class with virtual methods and set_attribute support
@@ -115,6 +123,7 @@ MOON-SIM implements a high-performance SystemC-based SoC architecture simulation
   - `config/simulation_config.json`: Main simulation and DelayLine settings
   - `config/traffic_generator_config.json`: TrafficGenerator-specific settings
   - `config/host_system_config.json`: HostSystem and IndexAllocator settings
+  - `config/dram_config.json`: DRAM Controller memory type and timing settings
 - **Per-component debug control**: Enable/disable logging for performance
 - **Resource management**: Configurable index pool sizes and allocation policies
 - **Performance optimization**: I/O bottleneck elimination achieving 25M+ tps
@@ -191,6 +200,29 @@ log/                # Timestamped simulation output logs
       "max_index": 10,
       "enable_reuse": true,
       "debug_enable": true
+    }
+  }
+}
+```
+
+#### `config/dram_config.json`
+```json
+{
+  "dram": {
+    "memory_type": "DDR4",
+    "speed_grade": "DDR4_3200",
+    "num_banks": 8,
+    "num_ranks": 1,
+    "page_size": 1024,
+    "burst_length": 8,
+    "auto_precharge": true,
+    "refresh_enable": true,
+    "debug_enable": false,
+    
+    "memory_configs": {
+      "DDR4_baseline": {"memory_type": "DDR4", "speed_grade": "DDR4_3200"},
+      "DDR5_high_performance": {"memory_type": "DDR5", "speed_grade": "DDR5_6400"},
+      "LPDDR5_mobile": {"memory_type": "LPDDR5", "speed_grade": "LPDDR5_6400"}
     }
   }
 }
