@@ -225,9 +225,17 @@ if [ -n "$BATCH_NAME" ]; then
     print_info "Batch name: $BATCH_NAME"
 fi
 
-# Check SYSTEMC_HOME
+# Check and set SYSTEMC_HOME
 if [ -z "$SYSTEMC_HOME" ]; then
-    print_warning "SYSTEMC_HOME not set. Make sure it's in your environment."
+    # Auto-detect SystemC installation in project directory
+    LOCAL_SYSTEMC="$(pwd)/systemc-install"
+    if [ -d "$LOCAL_SYSTEMC" ]; then
+        export SYSTEMC_HOME="$LOCAL_SYSTEMC"
+        print_info "Auto-detected SystemC installation: $SYSTEMC_HOME"
+    else
+        print_warning "SYSTEMC_HOME not set and local installation not found at $LOCAL_SYSTEMC"
+        print_warning "Please set SYSTEMC_HOME environment variable or install SystemC"
+    fi
 fi
 
 # Run the Python sweep script with target parameter
