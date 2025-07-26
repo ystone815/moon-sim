@@ -1,6 +1,11 @@
 #ifndef FLASH_CONTROLLER_H
 #define FLASH_CONTROLLER_H
 
+/*
+ * MOON-SIM: Modular Object-Oriented Network Simulator
+ * Flash Controller - Event-driven NAND flash management with wear leveling
+ */
+
 #include <systemc.h>
 #include <memory>
 #include <queue>

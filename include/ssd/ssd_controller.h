@@ -1,6 +1,11 @@
 #ifndef SSD_CONTROLLER_H
 #define SSD_CONTROLLER_H
 
+/*
+ * MOON-SIM: Modular Object-Oriented Network Simulator
+ * SSD Controller - Event-driven storage controller with PCIe interface
+ */
+
 #include <systemc.h>
 #include <memory>
 #include <queue>
@@ -296,7 +301,7 @@ SC_MODULE(SSDController) {
         load_configuration();
         
         if (m_debug_enable) {
-            std::cout << "0 s | " << basename() << ": SSD Controller initialized"
+            std::cout << "0 s | " << basename() << ": MOON-SIM SSD Controller initialized"
                       << " (Type: " << m_config.controller_type
                       << ", Queue Depth: " << m_config.command_queue_depth << ")" << std::endl;
         }

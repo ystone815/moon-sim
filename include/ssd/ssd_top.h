@@ -1,6 +1,11 @@
 #ifndef SSD_TOP_H
 #define SSD_TOP_H
 
+/*
+ * MOON-SIM: Modular Object-Oriented Network Simulator
+ * SSD Top Level - Complete storage hierarchy integration
+ */
+
 #include <systemc.h>
 #include <memory>
 #include <string>

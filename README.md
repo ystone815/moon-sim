@@ -1,6 +1,28 @@
-# SystemC SoC Architecture Simulator
+# 🌙 MOON-SIM: Modular Object-Oriented Network Simulator
 
 A high-performance, production-ready SystemC-based simulation framework for System-on-Chip (SoC) architecture modeling and analysis.
+
+## 🌙 MOON-SIM Philosophy
+
+*"Lighting the Dark Side of System Architecture"*
+
+Like the moon that guides sailors through dark waters, MOON-SIM illuminates the complex pathways of SoC architecture simulation. Just as the moon reflects sunlight to provide gentle illumination, our simulator reflects real hardware behavior with precision and clarity.
+
+### The MOON Principles
+
+- **🌙 M**odular: Like lunar phases, each component has its distinct role yet contributes to the whole system
+- **🌙 O**bject-**O**riented: Orbital precision in design - templates and polymorphism working in perfect harmony  
+- **🌙 N**etwork: Tidal forces of communication - event-driven connections that flow naturally through the system
+- **🌙 SIM**ulator: Silent oversight of system operations, providing stable foundation in the chaos of development
+
+### Core Values
+
+- **Orbital Precision**: Every simulation cycle maintains mathematical accuracy like celestial mechanics
+- **Silent Oversight**: Monitoring complex system operations with minimal intrusion
+- **Stable Foundation**: Unchanging reliability that developers can depend on
+- **Gentle Illumination**: Making the invisible visible through clear visualization and analysis
+
+*MOON-SIM transforms the darkness of complex system interactions into the clear light of understanding.*
 
 ## 🚀 Features
 

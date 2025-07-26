@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# MOON-SIM: Modular Object-Oriented Network Simulator
+
+**MOON-SIM** is a high-performance SystemC-based SoC architecture simulation system designed for storage systems and network-on-chip modeling.
+
+## Project Philosophy
+
+- **M**odular: Independent, reusable components with single responsibilities
+- **O**bject-**O**riented: Template-based design with polymorphic packet systems
+- **N**etwork: Event-driven communication with PCIe-style bidirectional architecture
+- **SIM**ulator: High-performance SystemC simulation achieving 25M+ TPS
+
 ## Build and Development Commands
 
 ### Environment Setup (Required)
@@ -42,9 +53,9 @@ python3 run_sweep.py config/sweeps/write_ratio_sweep.json
 - **Corporate Compatible**: Works in C++11-only environments
 - **Flexible Installation**: Supports any SystemC installation path via environment variable
 
-## Project Architecture
+## MOON-SIM Architecture
 
-This is a high-performance SystemC-based SoC architecture simulation system with a PCIe-style bidirectional design:
+MOON-SIM implements a high-performance SystemC-based SoC architecture simulation system with a PCIe-style bidirectional design:
 
 **HostSystem (TrafficGenerator + IndexAllocator) ⟷ Memory**
 - **Downstream**: HostSystem → DownstreamDelay → Memory  

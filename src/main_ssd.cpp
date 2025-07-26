@@ -38,6 +38,13 @@ bool create_directory(const std::string& path) {
 }
 
 int sc_main(int argc, char* argv[]) {
+    std::cout << "=====================================" << std::endl;
+    std::cout << "  MOON-SIM v1.0" << std::endl;
+    std::cout << "  Modular Object-Oriented Network Simulator" << std::endl;
+    std::cout << "=====================================" << std::endl;
+    std::cout << "DEBUG: sc_main() started" << std::endl;
+    std::cout.flush();
+    
     // Determine config directory (default: config/base/, override with command line argument)
     std::string config_dir = "config/base/";
     if (argc > 1) {
@@ -47,34 +54,65 @@ int sc_main(int argc, char* argv[]) {
         }
     }
     
+    std::cout << "DEBUG: Config directory: " << config_dir << std::endl;
+    std::cout.flush();
+    
     // Load PCIe and simulation configuration
+    std::cout << "DEBUG: Loading configurations..." << std::endl;
+    std::cout.flush();
     JsonConfig pcie_config(config_dir + "pcie_config.json");
+    std::cout << "DEBUG: PCIe config loaded" << std::endl;
+    std::cout.flush();
     JsonConfig sim_config(config_dir + "simulation_config.json");
+    std::cout << "DEBUG: Sim config loaded" << std::endl;
+    std::cout.flush();
     
     // Extract PCIe configuration
+    std::cout << "DEBUG: Extracting PCIe configuration..." << std::endl;
+    std::cout.flush();
     PCIeGeneration pcie_gen = static_cast<PCIeGeneration>(pcie_config.get_int("pcie.link_configuration.generation", 7));
     uint8_t pcie_lanes = static_cast<uint8_t>(pcie_config.get_int("pcie.link_configuration.lanes", 4));
     bool pcie_debug = pcie_config.get_bool("pcie.debugging.enable_detailed_logging", false);
+    std::cout << "DEBUG: PCIe configuration extracted" << std::endl;
+    std::cout.flush();
     
     // Extract simulation configuration
+    std::cout << "DEBUG: Extracting simulation configuration..." << std::endl;
+    std::cout.flush();
     bool ssd_debug = sim_config.get_bool("simulation.ssd_debug_enable", false);
+    double simulation_time_sec = sim_config.get_double("simulation.simulation_time_sec", 0.1);
+    bool enable_finite_simulation = sim_config.get_bool("simulation.enable_finite_simulation", true);
+    std::cout << "DEBUG: Simulation configuration extracted - time: " << simulation_time_sec << "s, finite: " << enable_finite_simulation << std::endl;
+    std::cout.flush();
     // Note: Latency profiling capability moved to HostSystem's embedded profiler
     
     // Ensure log directory exists
+    std::cout << "DEBUG: Creating log directory..." << std::endl;
+    std::cout.flush();
     if (!create_directory("log")) {
         std::cerr << "Error: Failed to create log directory. Logging may not work properly." << std::endl;
     }
+    std::cout << "DEBUG: Log directory created" << std::endl;
+    std::cout.flush();
     
-    // Generate log file in the config directory (TC folder for sweeps)
+    // Generate log file in the log directory (not config directory)
+    std::cout << "DEBUG: Generating log filename..." << std::endl;
+    std::cout.flush();
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     std::stringstream ss;
-    ss << config_dir << "ssd_simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
+    ss << "log/ssd_simulation_" << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".log";
     std::string log_filename = ss.str();
+    std::cout << "DEBUG: Log filename: " << log_filename << std::endl;
+    std::cout.flush();
 
-    // Redirect cout to log file for sweep test compatibility
+    // Redirect cout to log file for sweep test compatibility (DISABLED FOR DEBUG)
+    std::cout << "DEBUG: Skipping log file redirection for debugging..." << std::endl;
+    std::cout.flush();
     std::ofstream log_file;
     std::streambuf* cout_sbuf = nullptr;
+    // Temporarily disable log redirection
+    /*
     log_file.open(log_filename);
     if (!log_file.is_open()) {
         std::cerr << "Warning: Could not open log file " << log_filename << std::endl;
@@ -82,6 +120,7 @@ int sc_main(int argc, char* argv[]) {
         cout_sbuf = std::cout.rdbuf();
         std::cout.rdbuf(log_file.rdbuf());
     }
+    */
 
     std::cout << "========================================" << std::endl;
     std::cout << "SSD Simulation with PCIe Gen" << static_cast<int>(pcie_gen) 
@@ -91,17 +130,31 @@ int sc_main(int argc, char* argv[]) {
 
     // ================== Component Creation ==================
     
+    std::cout << "DEBUG: Starting component creation..." << std::endl;
+    std::cout.flush();
+    
     // 1. Create HostSystem (Traffic Generator + Index Allocator + Profiler)
+    std::cout << "DEBUG: Creating HostSystem..." << std::endl;
+    std::cout.flush();
     HostSystem host_system("host_system", config_dir + "host_system_config.json");
+    std::cout << "DEBUG: HostSystem created" << std::endl;
+    std::cout.flush();
     
     // 2. Create PCIe DelayLines (Host <-> SSD communication)
+    std::cout << "DEBUG: Creating PCIe DelayLines..." << std::endl;
+    std::cout.flush();
     PCIeDelayLine<BasePacket> pcie_downstream("pcie_downstream", pcie_gen, pcie_lanes, pcie_debug);
+    std::cout << "DEBUG: PCIe downstream created" << std::endl;
+    std::cout.flush();
     PCIeDelayLine<BasePacket> pcie_upstream("pcie_upstream", pcie_gen, pcie_lanes, pcie_debug);
+    std::cout << "DEBUG: PCIe upstream created" << std::endl;
+    std::cout.flush();
     
     // 3. Create SSD Top (Cache + DRAM + Flash hierarchy)
-    std::cout << "Creating SSD Top with config: " << config_dir + "ssd_config.json" << std::endl;
+    std::cout << "DEBUG: Creating SSD Top with config: " << config_dir + "ssd_config.json" << std::endl;
+    std::cout << "DEBUG: About to instantiate SSDTop..." << std::endl;
     SSDTop<BasePacket> ssd_top("ssd_top", config_dir + "ssd_config.json", ssd_debug);
-    std::cout << "SSD Top created successfully" << std::endl;
+    std::cout << "DEBUG: SSD Top created successfully" << std::endl;
     
     // Note: Latency profiling is now handled by HostSystem's embedded profiler
 
@@ -133,15 +186,25 @@ int sc_main(int argc, char* argv[]) {
 
     // ================== Simulation Execution ==================
     
-    std::cout << "\nStarting SSD simulation..." << std::endl;
+    std::cout << "\nDEBUG: All components created and connected" << std::endl;
+    std::cout << "DEBUG: Starting SSD simulation..." << std::endl;
     std::cout << "Architecture: HostSystem -> PCIe Gen" << static_cast<int>(pcie_gen) 
               << " x" << static_cast<int>(pcie_lanes) << " -> SSD(Cache/DRAM/Flash)" << std::endl;
     
     // Record start time
     auto sim_start_time = std::chrono::high_resolution_clock::now();
     
-    // Run simulation
-    sc_start();
+    std::cout << "DEBUG: About to call sc_start()..." << std::endl;
+    // Run simulation with configurable time
+    if (enable_finite_simulation) {
+        std::cout << "DEBUG: Running finite simulation for " << simulation_time_sec << " seconds" << std::endl;
+        sc_start(simulation_time_sec, SC_SEC);
+        std::cout << "DEBUG: sc_start() completed after " << simulation_time_sec << "s simulation time" << std::endl;
+    } else {
+        std::cout << "DEBUG: Running infinite simulation (sc_start)" << std::endl;
+        sc_start();
+        std::cout << "DEBUG: sc_start() completed" << std::endl;
+    }
     
     // Record end time
     auto sim_end_time = std::chrono::high_resolution_clock::now();
