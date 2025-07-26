@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-SystemC Parameter Sweep Test Runner (Python Version)
-Usage: python3 run_sweep.py <sweep_config_file> [batch_name] [target]
+SystemC Parameter Sweep Test Runner (Enhanced Python Version)
+Usage: 
+  Interactive mode: python3 run_sweep.py
+  Command line mode: python3 run_sweep.py <sweep_config_file> [batch_name] [target]
 Targets: sim (default), sim_ssd, cache_test, web_test
 """
 
@@ -14,6 +16,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 import argparse
+import glob
 
 class Colors:
     RED = '\033[0;31m'
@@ -637,25 +640,279 @@ echo "Using regression results directory: {self.sweep_results_dir}"
         
         return 0 if self.failed == 0 else 1
 
-def main():
-    parser = argparse.ArgumentParser(description='SystemC Parameter Sweep Test Runner')
-    parser.add_argument('sweep_config', help='JSON file defining the parameter sweep')
-    parser.add_argument('batch_name', nargs='?', default='', help='Optional custom batch name')
-    parser.add_argument('target', nargs='?', default='sim', help='Simulation target (sim, sim_ssd, cache_test, web_test)')
+def check_systemc_environment():
+    """Check and set SYSTEMC_HOME environment variable"""
+    if 'SYSTEMC_HOME' not in os.environ or not os.environ['SYSTEMC_HOME']:
+        # Auto-detect SystemC installation in project directory
+        local_systemc = Path.cwd() / "systemc-install"
+        if local_systemc.exists() and local_systemc.is_dir():
+            os.environ['SYSTEMC_HOME'] = str(local_systemc)
+            print(f"{Colors.CYAN}[INFO]{Colors.NC} Auto-detected SystemC installation: {local_systemc}")
+        else:
+            print(f"{Colors.YELLOW}[WARNING]{Colors.NC} SYSTEMC_HOME not set and local installation not found at {local_systemc}")
+            print(f"{Colors.YELLOW}[WARNING]{Colors.NC} Please set SYSTEMC_HOME environment variable or install SystemC")
+            return False
+    return True
+
+def find_sweep_configs():
+    """Find all available sweep configuration files"""
+    configs = []
+    config_paths = []
     
-    args = parser.parse_args()
+    sweep_dir = Path("config/sweeps")
+    if not sweep_dir.exists():
+        return configs, config_paths
     
-    if not os.path.exists(args.sweep_config):
-        print(f"{Colors.RED}Error: Sweep config file '{args.sweep_config}' not found{Colors.NC}")
-        print(f"{Colors.YELLOW}Example: python3 run_sweep.py config/sweeps/write_ratio_sweep.json my_sweep sim_ssd{Colors.NC}")
+    # Recursively find all JSON files in config/sweeps
+    for json_file in sweep_dir.rglob("*.json"):
+        rel_path = json_file.relative_to(sweep_dir)
+        configs.append(str(rel_path))
+        config_paths.append(json_file)
+    
+    # Sort for consistent display
+    sorted_pairs = sorted(zip(configs, config_paths))
+    configs, config_paths = zip(*sorted_pairs) if sorted_pairs else ([], [])
+    
+    return list(configs), list(config_paths)
+
+def auto_complete_config_path(sweep_config):
+    """Auto-complete sweep config file name with various patterns"""
+    # If file exists as-is, return it
+    if Path(sweep_config).exists():
+        return sweep_config
+    
+    # Try with config/sweeps/ prefix
+    full_path = Path(f"config/sweeps/{sweep_config}")
+    if full_path.exists():
+        return str(full_path)
+    
+    # Try adding .json extension
+    json_path = Path(f"config/sweeps/{sweep_config}.json")
+    if json_path.exists():
+        return str(json_path)
+    
+    # Try adding _sweep.json
+    sweep_json_path = Path(f"config/sweeps/{sweep_config}_sweep.json")
+    if sweep_json_path.exists():
+        return str(sweep_json_path)
+    
+    # Search recursively in subdirectories
+    search_pattern = f"config/sweeps/**/{sweep_config}*.json"
+    matches = glob.glob(search_pattern, recursive=True)
+    if matches:
+        return matches[0]
+    
+    return None
+
+def detect_target_from_config(config_file):
+    """Detect simulation target from config file"""
+    try:
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+        return config.get('target', None)
+    except:
+        return None
+
+def interactive_mode():
+    """Run in interactive mode for config and target selection"""
+    print(f"{Colors.CYAN}SystemC Parameter Sweep Runner{Colors.NC}")
+    print("")
+    
+    # Check if config/sweeps directory exists
+    if not Path("config/sweeps").exists():
+        print(f"{Colors.RED}[ERROR]{Colors.NC} config/sweeps directory not found")
         sys.exit(1)
     
-    # Handle empty batch name properly    
-    batch_name = args.batch_name if args.batch_name else None
+    # Get list of available sweep configurations
+    configs, config_paths = find_sweep_configs()
+    
+    if not configs:
+        print(f"{Colors.RED}[ERROR]{Colors.NC} No sweep configuration files found in config/sweeps/")
+        sys.exit(1)
+    
+    # Show available configurations
+    print("Available sweep configurations:")
+    print("")
+    for i, config in enumerate(configs):
+        print(f"{i+1:2d}) {config}")
+    print("")
+    
+    # Get user selection
+    while True:
+        choice = input(f"Select a configuration (1-{len(configs)}) or 'q' to quit: ").strip()
         
-    runner = SweepRunner(args.sweep_config, batch_name, args.target)
-    exit_code = runner.run()
-    sys.exit(exit_code)
+        if choice.lower() == 'q':
+            print(f"{Colors.CYAN}[INFO]{Colors.NC} Exiting...")
+            sys.exit(0)
+        
+        try:
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(configs):
+                selected_config = configs[choice_num - 1]
+                sweep_config_file = str(config_paths[choice_num - 1])
+                break
+            else:
+                print(f"{Colors.RED}[ERROR]{Colors.NC} Invalid selection. Please enter a number between 1 and {len(configs)}, or 'q' to quit.")
+        except ValueError:
+            print(f"{Colors.RED}[ERROR]{Colors.NC} Invalid selection. Please enter a number between 1 and {len(configs)}, or 'q' to quit.")
+    
+    # Auto-detect target from config
+    auto_target = detect_target_from_config(sweep_config_file)
+    simulation_target = None
+    
+    if auto_target:
+        targets = ["sim", "sim_ssd", "cache_test", "web_test"]
+        if auto_target in targets:
+            simulation_target = auto_target
+            target_configs = {
+                "sim": "Basic SystemC simulation (HostSystem + Memory)",
+                "sim_ssd": "SSD simulation with PCIe interface", 
+                "cache_test": "Cache performance testing",
+                "web_test": "Web monitoring simulation"
+            }
+            print(f"{Colors.CYAN}[INFO]{Colors.NC} Auto-detected target from config: {simulation_target} - {target_configs[simulation_target]}")
+    
+    # Ask for simulation target if not auto-detected
+    if not simulation_target:
+        print("")
+        print("Available simulation targets:")
+        print("")
+        
+        targets = [
+            ("sim", "Basic SystemC simulation (HostSystem + Memory)"),
+            ("sim_ssd", "SSD simulation with PCIe interface"),
+            ("cache_test", "Cache performance testing"),
+            ("web_test", "Web monitoring simulation")
+        ]
+        
+        for i, (target, desc) in enumerate(targets):
+            print(f"{i+1:2d}) {target:<12} - {desc}")
+        print("")
+        
+        # Get target selection
+        while True:
+            target_choice = input(f"Select simulation target (1-{len(targets)}) or 's' to skip (default: sim): ").strip()
+            
+            if not target_choice or target_choice.lower() == 's':
+                simulation_target = "sim"
+                break
+            
+            try:
+                target_num = int(target_choice)
+                if 1 <= target_num <= len(targets):
+                    simulation_target = targets[target_num - 1][0]
+                    break
+                else:
+                    print(f"{Colors.RED}[ERROR]{Colors.NC} Invalid selection. Please enter a number between 1 and {len(targets)}, or 's' to skip.")
+            except ValueError:
+                print(f"{Colors.RED}[ERROR]{Colors.NC} Invalid selection. Please enter a number between 1 and {len(targets)}, or 's' to skip.")
+    
+    # Ask for optional batch name
+    print("")
+    batch_name = input("Enter optional batch name (or press Enter to use default): ").strip()
+    if not batch_name:
+        batch_name = None
+    
+    print("")
+    print(f"{Colors.CYAN}[INFO]{Colors.NC} Selected: {selected_config}")
+    print(f"{Colors.CYAN}[INFO]{Colors.NC} Target: {simulation_target}")
+    if batch_name:
+        print(f"{Colors.CYAN}[INFO]{Colors.NC} Batch name: {batch_name}")
+    print("")
+    
+    return sweep_config_file, batch_name, simulation_target
+
+def main():
+    # Check for interactive mode (no command line arguments)
+    if len(sys.argv) == 1:
+        # Interactive mode
+        print(f"{Colors.CYAN}[INFO]{Colors.NC} Running in interactive mode...")
+        
+        # Check SystemC environment
+        if not check_systemc_environment():
+            print(f"{Colors.RED}[ERROR]{Colors.NC} SystemC environment check failed")
+            sys.exit(1)
+        
+        # Get configuration through interactive prompts
+        sweep_config_file, batch_name, target = interactive_mode()
+        
+    else:
+        # Command line mode (backward compatibility)
+        parser = argparse.ArgumentParser(description='SystemC Parameter Sweep Test Runner')
+        parser.add_argument('sweep_config', nargs='?', help='JSON file defining the parameter sweep')
+        parser.add_argument('batch_name', nargs='?', default='', help='Optional custom batch name')
+        parser.add_argument('target', nargs='?', default='sim', help='Simulation target (sim, sim_ssd, cache_test, web_test)')
+        
+        args = parser.parse_args()
+        
+        if not args.sweep_config:
+            print(f"{Colors.YELLOW}Usage:{Colors.NC}")
+            print(f"  Interactive mode: python3 run_sweep.py")
+            print(f"  Command line mode: python3 run_sweep.py <sweep_config_file> [batch_name] [target]")
+            print(f"{Colors.YELLOW}Example: python3 run_sweep.py config/sweeps/write_ratio_sweep.json my_sweep sim_ssd{Colors.NC}")
+            sys.exit(1)
+        
+        # Check SystemC environment
+        if not check_systemc_environment():
+            print(f"{Colors.RED}[ERROR]{Colors.NC} SystemC environment check failed")
+            sys.exit(1)
+        
+        # Auto-complete config file path
+        completed_config = auto_complete_config_path(args.sweep_config)
+        if not completed_config:
+            print(f"{Colors.RED}[ERROR]{Colors.NC} Sweep config file not found: {args.sweep_config}")
+            print(f"{Colors.CYAN}[INFO]{Colors.NC} Available configs in config/sweeps/:")
+            configs, _ = find_sweep_configs()
+            if configs:
+                for config in configs:
+                    print(f"  {config}")
+            else:
+                print("  (none found)")
+            sys.exit(1)
+        
+        sweep_config_file = completed_config
+        batch_name = args.batch_name if args.batch_name else None
+        target = args.target
+        
+        print(f"{Colors.CYAN}[INFO]{Colors.NC} Starting parameter sweep...")
+        print(f"{Colors.CYAN}[INFO]{Colors.NC} Config file: {sweep_config_file}")
+        if batch_name:
+            print(f"{Colors.CYAN}[INFO]{Colors.NC} Batch name: {batch_name}")
+    
+    # Run the sweep
+    try:
+        runner = SweepRunner(sweep_config_file, batch_name, target)
+        exit_code = runner.run()
+        
+        # Show results directory (like sweep.sh does)
+        if exit_code == 0:
+            print(f"{Colors.GREEN}[SUCCESS]{Colors.NC} Parameter sweep completed successfully!")
+            
+            # Find the actual results directory
+            results_pattern = f"regression_runs/*{runner.batch_name}*"
+            results_dirs = glob.glob(results_pattern)
+            if results_dirs:
+                latest_results = max(results_dirs, key=os.path.getctime)
+                print(f"{Colors.CYAN}[INFO]{Colors.NC} Results available in: {latest_results}")
+                
+                csv_file = Path(latest_results) / "sweep_results.csv"
+                summary_file = Path(latest_results) / "sweep_summary.txt"
+                
+                if csv_file.exists():
+                    print(f"{Colors.CYAN}[INFO]{Colors.NC} CSV data: {csv_file}")
+                if summary_file.exists():
+                    print(f"{Colors.CYAN}[INFO]{Colors.NC} Summary: {summary_file}")
+        else:
+            print(f"{Colors.RED}[ERROR]{Colors.NC} Parameter sweep failed!")
+        
+        sys.exit(exit_code)
+        
+    except KeyboardInterrupt:
+        print(f"\n{Colors.YELLOW}[WARNING]{Colors.NC} Sweep interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        print(f"{Colors.RED}[ERROR]{Colors.NC} Unexpected error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
