@@ -126,8 +126,8 @@ SC_MODULE(SSDTop) {
         // Create L1 Cache (template parameters: size, line_size, associativity)
         m_cache_l1 = new CacheL1<32, 64, 4>("cache_l1");
         
-        // Create DRAM Controller
-        m_dram_controller = new DramController<8, 1>("dram_controller", DramTiming(), 1024, 8, true, true, module_debug);
+        // Create DRAM Controller (DDR4 with default timings)
+        m_dram_controller = new DramController<8, 1>("dram_controller", DramTiming(), MemoryType::DDR4, 1024, 8, true, true, module_debug);
         
         // Create Flash Controller
         m_flash_controller = new FlashController<PacketType>("flash_controller", m_config_file, module_debug);

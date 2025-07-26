@@ -64,6 +64,15 @@ SC_MODULE(TrafficGenerator) {
     const double m_poisson_rate;            // Rate parameter for Poisson
 
     void run();
+    
+    // Statistics getter methods
+    unsigned int get_total_transactions() const { return m_num_transactions; }
+    unsigned int get_sent_transactions() const { return m_transactions_sent; }
+    unsigned int get_completed_transactions() const { return m_transactions_completed; }
+    bool is_generation_complete() const { return m_transactions_sent >= m_num_transactions; }
+    double get_completion_rate() const { 
+        return m_num_transactions > 0 ? (double)m_transactions_completed / m_num_transactions : 0.0; 
+    }
 
     // Updated constructor with new parameter
     TrafficGenerator(sc_module_name name, sc_time interval, unsigned int locality_percentage, unsigned int write_percentage, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable = false, unsigned int start_address = 0, unsigned int end_address = 0xFF, unsigned int address_increment = 0x10);
@@ -76,6 +85,11 @@ SC_MODULE(TrafficGenerator) {
 
 private:
     unsigned int m_current_address; // For sequential access
+    
+    // Statistics tracking
+    mutable unsigned int m_transactions_sent;      // Transactions sent to the system
+    mutable unsigned int m_transactions_completed; // Transactions completed (received back)
+    
     std::mt19937 m_random_generator; // Random number generator
     std::uniform_int_distribution<int> m_address_dist; // Address distribution
     std::uniform_int_distribution<int> m_data_dist; // Data distribution

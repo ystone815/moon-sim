@@ -52,6 +52,28 @@ private:
     
     // Helper method to create index setter function for IndexAllocator
     std::function<void(BasePacket&, unsigned int)> create_index_setter();
+
+public:
+    // TrafficGenerator statistics access
+    unsigned int get_total_transactions() const {
+        return m_traffic_generator ? m_traffic_generator->get_total_transactions() : 0;
+    }
+    
+    unsigned int get_sent_transactions() const {
+        return m_traffic_generator ? m_traffic_generator->get_sent_transactions() : 0;
+    }
+    
+    unsigned int get_completed_transactions() const {
+        return m_traffic_generator ? m_traffic_generator->get_completed_transactions() : 0;
+    }
+    
+    bool is_generation_complete() const {
+        return m_traffic_generator ? m_traffic_generator->is_generation_complete() : true;
+    }
+    
+    double get_completion_rate() const {
+        return m_traffic_generator ? m_traffic_generator->get_completion_rate() : 0.0;
+    }
 };
 
 #endif

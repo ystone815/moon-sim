@@ -1,5 +1,7 @@
 {
   "simulation": {
+    "simulation_time_sec": 0.1,
+    "enable_finite_simulation": true,
     "delay_lines": {
       "delay_ns": 10,
       "debug_enable": false

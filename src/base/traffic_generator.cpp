@@ -10,6 +10,8 @@ TrafficGenerator::TrafficGenerator(sc_module_name name, sc_time interval, unsign
       m_burst_size(10), m_burst_interval(sc_time(10, SC_NS)), m_idle_time(sc_time(1000, SC_NS)),
       m_delay_mean(100.0), m_delay_stddev(20.0), m_poisson_rate(1000.0),
       m_current_address(start_address),
+      m_transactions_sent(0),
+      m_transactions_completed(0),
       m_random_generator(std::random_device{}()),
       m_address_dist(start_address, end_address),
       m_data_dist(0, 0xFFF),
@@ -64,6 +66,8 @@ TrafficGenerator::TrafficGenerator(sc_module_name name, const JsonConfig& config
       m_delay_stddev(config.get_double("delay_stddev_ns", 20.0)),
       m_poisson_rate(config.get_double("poisson_rate", 1000.0)),
       m_current_address(m_start_address),
+      m_transactions_sent(0),
+      m_transactions_completed(0),
       m_random_generator(std::random_device{}()),
       m_address_dist(m_start_address, m_end_address),
       m_data_dist(0, 0xFFF),
@@ -233,6 +237,7 @@ void TrafficGenerator::run_constant_pattern() {
     for (int i = 0; i < m_num_transactions; ++i) {
         auto p = generate_packet();
         out.write(p);
+        m_transactions_sent++;
         
         if (m_debug_enable) {
             print_packet_log(std::cout, "TrafficGenerator", *p, 
@@ -244,11 +249,9 @@ void TrafficGenerator::run_constant_pattern() {
 }
 
 void TrafficGenerator::run_burst_pattern() {
-    int transactions_sent = 0;
-    
-    while (transactions_sent < m_num_transactions) {
+    while (m_transactions_sent < m_num_transactions) {
         // Send a burst of packets
-        int remaining = static_cast<int>(m_num_transactions) - transactions_sent;
+        int remaining = static_cast<int>(m_num_transactions) - m_transactions_sent;
         int burst_count = std::min(static_cast<int>(m_burst_size), remaining);
         
         if (m_debug_enable) {
@@ -259,6 +262,7 @@ void TrafficGenerator::run_burst_pattern() {
         for (int i = 0; i < burst_count; ++i) {
             auto p = generate_packet();
             out.write(p);
+            m_transactions_sent++;
             
             if (m_debug_enable) {
                 print_packet_log(std::cout, "TrafficGenerator", *p, 
@@ -270,10 +274,8 @@ void TrafficGenerator::run_burst_pattern() {
             }
         }
         
-        transactions_sent += burst_count;
-        
         // Wait for idle time before next burst
-        if (transactions_sent < m_num_transactions) {
+        if (m_transactions_sent < m_num_transactions) {
             if (m_debug_enable) {
                 std::cout << sc_time_stamp() << " | TrafficGenerator: Entering idle period for " 
                           << m_idle_time << std::endl;
@@ -287,6 +289,7 @@ void TrafficGenerator::run_stochastic_pattern() {
     for (int i = 0; i < m_num_transactions; ++i) {
         auto p = generate_packet();
         out.write(p);
+        m_transactions_sent++;
         
         if (m_debug_enable) {
             print_packet_log(std::cout, "TrafficGenerator", *p, 

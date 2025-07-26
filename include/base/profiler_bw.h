@@ -46,11 +46,8 @@ public:
         m_current_period_bytes += databyte;
         m_current_period_packets++;
         
-        // Check if it's time to report
-        sc_time current_time = sc_time_stamp();
-        if (current_time - m_last_report_time >= m_reporting_period) {
-            report_current_period();
-        }
+        // Periodic reporting is now handled by reporting_process()
+        // No need to check time here as the dedicated process handles it
         
         if (m_debug_enable) {
             std::cout << sc_time_stamp() << " | " << m_profiler_name 
@@ -124,11 +121,23 @@ private:
     unsigned long long m_current_period_packets;
     sc_time m_last_report_time;
     
-    // Periodic reporting process thread (optional - can be disabled)
+    // Periodic reporting process thread
     void reporting_process() {
-        // This process is primarily for future extension
-        // For now, periodic reporting is handled in profile_packet()
-        wait(); // Wait indefinitely - this process is inactive
+        // Start reporting after one period to have some data
+        wait(m_reporting_period);
+        
+        while (true) {
+            // Generate periodic report
+            report_current_period();
+            
+            // Reset period counters
+            m_current_period_bytes = 0;
+            m_current_period_packets = 0;
+            m_last_report_time = sc_time_stamp();
+            
+            // Wait for next reporting period
+            wait(m_reporting_period);
+        }
     }
     
     void report_current_period() {

@@ -21,6 +21,15 @@ enum class MemoryType {
     LPDDR5      // Low Power DDR5
 };
 
+// Refresh schemes for different memory types
+enum class RefreshScheme {
+    ALL_BANK_REFRESH,       // Traditional refresh - all banks refreshed together (DDR4)
+    SAME_BANK_REFRESH,      // Same bank group refresh (DDR5/LPDDR5 optimization)
+    PER_BANK_REFRESH,       // Individual bank refresh (DDR5/LPDDR5 fine-grained)
+    DISTRIBUTED_REFRESH,    // Distributed refresh across time (LPDDR5 power optimization)
+    REFRESH_MANAGEMENT_UNIT // RMU-based refresh (DDR5 advanced)
+};
+
 // Speed grades for different memory types
 enum class SpeedGrade {
     // DDR4 speed grades
@@ -53,6 +62,20 @@ struct DramTiming {
     sc_time tREFI;      // Refresh Interval
     sc_time tBurst;     // Burst duration
     
+    // Bank Group specific timings (DDR5/LPDDR5)
+    sc_time tCCDL;      // CAS to CAS Delay (Long) - different bank group
+    sc_time tCCDS;      // CAS to CAS Delay (Short) - same bank group
+    sc_time tRRDL;      // Row to Row Delay (Long) - different bank group
+    sc_time tRRDS;      // Row to Row Delay (Short) - same bank group
+    
+    // Refresh scheme specific timings
+    RefreshScheme refresh_scheme;   // Refresh strategy
+    sc_time tRFCab;     // All Bank Refresh Cycle time
+    sc_time tRFCsb;     // Same Bank Refresh Cycle time  
+    sc_time tRFCpb;     // Per Bank Refresh Cycle time
+    sc_time tREFIpb;    // Per Bank Refresh Interval
+    uint32_t refresh_granularity;   // Number of rows refreshed per operation
+    
     // Default DDR4-3200 timings (approximate)
     DramTiming() 
         : tCL(sc_time(14, SC_NS)),      // 14 ns CAS latency
@@ -62,7 +85,19 @@ struct DramTiming {
           tWR(sc_time(15, SC_NS)),      // 15 ns Write recovery
           tRFC(sc_time(350, SC_NS)),    // 350 ns Refresh cycle
           tREFI(sc_time(7800, SC_NS)),  // 7.8 μs Refresh interval
-          tBurst(sc_time(4, SC_NS))     // 4 ns burst (8 beats at 3200 MT/s)
+          tBurst(sc_time(4, SC_NS)),    // 4 ns burst (8 beats at 3200 MT/s)
+          // DDR4 doesn't use bank groups, set to same values
+          tCCDL(sc_time(4, SC_NS)),     // Same as tBurst for DDR4
+          tCCDS(sc_time(4, SC_NS)),     // Same as tBurst for DDR4
+          tRRDL(sc_time(6, SC_NS)),     // Row-to-row delay
+          tRRDS(sc_time(4, SC_NS)),     // Row-to-row delay (same bank)
+          // DDR4 uses traditional all-bank refresh
+          refresh_scheme(RefreshScheme::ALL_BANK_REFRESH),
+          tRFCab(sc_time(350, SC_NS)),  // All bank refresh cycle
+          tRFCsb(sc_time(350, SC_NS)),  // Same as all bank for DDR4
+          tRFCpb(sc_time(90, SC_NS)),   // Per bank refresh (if supported)
+          tREFIpb(sc_time(1950, SC_NS)), // Per bank refresh interval (tREFI/4)
+          refresh_granularity(8192)     // 8K rows per refresh
     {
     }
     
@@ -119,10 +154,12 @@ enum class BankState {
     REFRESHING     // Bank is being refreshed
 };
 
-// DRAM bank structure
+// DRAM bank structure with Bank Group support
 struct DramBank {
     BankState state;
     uint32_t active_row;           // Currently active row
+    uint32_t bank_group_id;        // Bank Group ID (DDR5/LPDDR5)
+    uint32_t bank_id;              // Bank ID within group
     sc_time last_activate_time;    // For tRAS timing
     sc_time last_precharge_time;   // For tRP timing
     sc_time last_read_time;        // For tCL timing
@@ -130,6 +167,12 @@ struct DramBank {
     std::queue<std::shared_ptr<BasePacket>> pending_requests;
     
     DramBank() : state(BankState::IDLE), active_row(0xFFFFFFFF),
+                 bank_group_id(0), bank_id(0),
+                 last_activate_time(SC_ZERO_TIME), last_precharge_time(SC_ZERO_TIME),
+                 last_read_time(SC_ZERO_TIME), last_write_time(SC_ZERO_TIME) {}
+                 
+    DramBank(uint32_t bg_id, uint32_t b_id) : state(BankState::IDLE), active_row(0xFFFFFFFF),
+                 bank_group_id(bg_id), bank_id(b_id),
                  last_activate_time(SC_ZERO_TIME), last_precharge_time(SC_ZERO_TIME),
                  last_read_time(SC_ZERO_TIME), last_write_time(SC_ZERO_TIME) {}
 };
@@ -147,10 +190,20 @@ struct DramStats {
     sc_time total_read_latency;
     sc_time total_write_latency;
     
+    // Refresh scheme specific statistics
+    uint64_t all_bank_refreshes;
+    uint64_t same_bank_refreshes;
+    uint64_t per_bank_refreshes;
+    uint64_t distributed_refreshes;
+    sc_time total_refresh_latency;
+    uint64_t refresh_conflicts;     // Commands delayed due to refresh
+    
     DramStats() : total_requests(0), read_requests(0), write_requests(0),
                   row_hits(0), row_misses(0), page_empty_hits(0), 
                   refresh_cycles(0), bank_conflicts(0),
-                  total_read_latency(SC_ZERO_TIME), total_write_latency(SC_ZERO_TIME) {}
+                  total_read_latency(SC_ZERO_TIME), total_write_latency(SC_ZERO_TIME),
+                  all_bank_refreshes(0), same_bank_refreshes(0), per_bank_refreshes(0),
+                  distributed_refreshes(0), total_refresh_latency(SC_ZERO_TIME), refresh_conflicts(0) {}
     
     double get_row_hit_rate() const {
         return total_requests > 0 ? (double)row_hits / total_requests : 0.0;
@@ -165,8 +218,8 @@ struct DramStats {
     }
 };
 
-// DRAM Controller template
-template<int NUM_BANKS = 8, int NUM_RANKS = 1>
+// DRAM Controller template with Bank Group support
+template<int NUM_BANKS = 8, int NUM_BANK_GROUPS = 1, int NUM_RANKS = 1>
 SC_MODULE(DramController) {
     SC_HAS_PROCESS(DramController);
     
@@ -176,6 +229,7 @@ SC_MODULE(DramController) {
     
     // Configuration
     const DramTiming m_timing;
+    const MemoryType m_memory_type;  // Memory type for bank group logic
     const int m_page_size;          // DRAM page size in bytes
     const int m_burst_length;       // Burst length (typically 8)
     const bool m_auto_precharge;    // Auto precharge after read/write
@@ -185,6 +239,7 @@ SC_MODULE(DramController) {
     // Constructor
     DramController(sc_module_name name,
                    DramTiming timing = DramTiming(),
+                   MemoryType memory_type = MemoryType::DDR4,
                    int page_size = 1024,              // 1KB page size
                    int burst_length = 8,
                    bool auto_precharge = true,
@@ -192,6 +247,7 @@ SC_MODULE(DramController) {
                    bool debug_enable = false)
         : sc_module(name),
           m_timing(timing),
+          m_memory_type(memory_type),
           m_page_size(page_size),
           m_burst_length(burst_length),
           m_auto_precharge(auto_precharge),
@@ -199,20 +255,20 @@ SC_MODULE(DramController) {
           m_debug_enable(debug_enable),
           m_random_generator(std::random_device{}())
     {
-        // Initialize banks
-        m_banks.resize(NUM_BANKS * NUM_RANKS);
-        for (auto& bank : m_banks) {
-            bank = DramBank();
-        }
+        // Initialize banks with Bank Group support
+        init_banks_with_groups();
         
         // Initialize statistics
         m_stats = DramStats();
         
         if (m_debug_enable) {
-            std::cout << "DramController: Initialized with " << NUM_BANKS 
-                      << " banks, " << NUM_RANKS << " ranks" << std::endl;
+            std::cout << "MOON-SIM DramController: Initialized " << DramTimingFactory::memoryTypeToString(m_memory_type) << std::endl;
+            std::cout << "  Banks: " << NUM_BANKS << ", Bank Groups: " << NUM_BANK_GROUPS << ", Ranks: " << NUM_RANKS << std::endl;
             std::cout << "  Page size: " << m_page_size << " bytes" << std::endl;
             std::cout << "  tCL: " << m_timing.tCL << ", tRCD: " << m_timing.tRCD << std::endl;
+            if (has_bank_groups()) {
+                std::cout << "  Bank Group timings - tCCDL: " << m_timing.tCCDL << ", tCCDS: " << m_timing.tCCDS << std::endl;
+            }
         }
         
         SC_THREAD(memory_controller_process);
@@ -225,6 +281,7 @@ SC_MODULE(DramController) {
     DramController(sc_module_name name, const JsonConfig& config)
         : DramController(name,
                         create_timing_from_config(config),
+                        parseMemoryType(config.get_string("dram.memory_type", "DDR4")),
                         config.get_int("dram.page_size", 1024),
                         config.get_int("dram.burst_length", 8),
                         config.get_bool("dram.auto_precharge", true),
@@ -297,27 +354,100 @@ private:
     // Random number generator
     std::mt19937 m_random_generator;
     
+    // Bank Group helper functions
+    void init_banks_with_groups() {
+        // Total banks = NUM_BANKS * NUM_BANK_GROUPS * NUM_RANKS
+        int total_banks = NUM_BANKS * NUM_BANK_GROUPS * NUM_RANKS;
+        m_banks.resize(total_banks);
+        
+        // Initialize banks with Bank Group and Bank IDs
+        for (int rank = 0; rank < NUM_RANKS; rank++) {
+            for (int bg = 0; bg < NUM_BANK_GROUPS; bg++) {
+                for (int bank = 0; bank < NUM_BANKS; bank++) {
+                    int bank_index = rank * (NUM_BANK_GROUPS * NUM_BANKS) + bg * NUM_BANKS + bank;
+                    m_banks[bank_index] = DramBank(bg, bank);
+                }
+            }
+        }
+    }
+    
+    bool has_bank_groups() const {
+        return (m_memory_type == MemoryType::DDR5 || m_memory_type == MemoryType::LPDDR5) 
+               && NUM_BANK_GROUPS > 1;
+    }
+    
+    bool same_bank_group(const DramBank& bank1, const DramBank& bank2) const {
+        return bank1.bank_group_id == bank2.bank_group_id;
+    }
+    
+    sc_time get_cas_to_cas_delay(const DramBank& bank1, const DramBank& bank2) const {
+        if (!has_bank_groups()) {
+            return m_timing.tBurst; // DDR4 behavior
+        }
+        return same_bank_group(bank1, bank2) ? m_timing.tCCDS : m_timing.tCCDL;
+    }
+    
+    sc_time get_row_to_row_delay(const DramBank& bank1, const DramBank& bank2) const {
+        if (!has_bank_groups()) {
+            return m_timing.tRRDL; // DDR4 behavior
+        }
+        return same_bank_group(bank1, bank2) ? m_timing.tRRDS : m_timing.tRRDL;
+    }
+    
     // Helper function to create timing from config
     static DramTiming create_timing_from_config(const JsonConfig& config) {
         // Check if custom timings are enabled
         if (config.get_bool("dram.custom_timings.enable_custom", false)) {
             // Use custom timing values
-            DramTiming timing;
-            timing.tCL = sc_time(config.get_double("dram.custom_timings.tCL_ns", 14), SC_NS);
-            timing.tRCD = sc_time(config.get_double("dram.custom_timings.tRCD_ns", 14), SC_NS);
-            timing.tRP = sc_time(config.get_double("dram.custom_timings.tRP_ns", 14), SC_NS);
-            timing.tRAS = sc_time(config.get_double("dram.custom_timings.tRAS_ns", 32), SC_NS);
-            timing.tWR = sc_time(config.get_double("dram.custom_timings.tWR_ns", 15), SC_NS);
-            timing.tRFC = sc_time(config.get_double("dram.custom_timings.tRFC_ns", 350), SC_NS);
-            timing.tREFI = sc_time(config.get_double("dram.custom_timings.tREFI_ns", 7800), SC_NS);
-            timing.tBurst = sc_time(config.get_double("dram.custom_timings.tBurst_ns", 4), SC_NS);
-            return timing;
-        } else {
-            // Use automatic timing based on memory type and speed grade
-            auto memory_type = parseMemoryType(config.get_string("dram.memory_type", "DDR4"));
-            auto speed_grade = parseSpeedGrade(config.get_string("dram.speed_grade", "DDR4_3200"));
-            return DramTimingFactory::create(memory_type, speed_grade);
+            return create_timing_from_custom_config(config);
+        } 
+        
+        // Check if using predefined configuration from memory_configs
+        std::string selected_config = config.get_string("dram.selected_config", "");
+        if (!selected_config.empty()) {
+            return create_timing_from_predefined_config(config, selected_config);
         }
+        
+        // Fallback: Use automatic timing based on memory type and speed grade
+        auto memory_type = parseMemoryType(config.get_string("dram.memory_type", "DDR4"));
+        auto speed_grade = parseSpeedGrade(config.get_string("dram.speed_grade", "DDR4_3200"));
+        return DramTimingFactory::create(memory_type, speed_grade);
+    }
+    
+    static DramTiming create_timing_from_custom_config(const JsonConfig& config) {
+        DramTiming timing;
+        timing.tCL = sc_time(config.get_double("dram.custom_timings.tCL_ns", 14), SC_NS);
+        timing.tRCD = sc_time(config.get_double("dram.custom_timings.tRCD_ns", 14), SC_NS);
+        timing.tRP = sc_time(config.get_double("dram.custom_timings.tRP_ns", 14), SC_NS);
+        timing.tRAS = sc_time(config.get_double("dram.custom_timings.tRAS_ns", 32), SC_NS);
+        timing.tWR = sc_time(config.get_double("dram.custom_timings.tWR_ns", 15), SC_NS);
+        timing.tRFC = sc_time(config.get_double("dram.custom_timings.tRFC_ns", 350), SC_NS);
+        timing.tREFI = sc_time(config.get_double("dram.custom_timings.tREFI_ns", 7800), SC_NS);
+        timing.tBurst = sc_time(config.get_double("dram.custom_timings.tBurst_ns", 4), SC_NS);
+        timing.tCCDL = sc_time(config.get_double("dram.custom_timings.tCCDL_ns", 4), SC_NS);
+        timing.tCCDS = sc_time(config.get_double("dram.custom_timings.tCCDS_ns", 4), SC_NS);
+        timing.tRRDL = sc_time(config.get_double("dram.custom_timings.tRRDL_ns", 6), SC_NS);
+        timing.tRRDS = sc_time(config.get_double("dram.custom_timings.tRRDS_ns", 4), SC_NS);
+        return timing;
+    }
+    
+    static DramTiming create_timing_from_predefined_config(const JsonConfig& config, const std::string& config_name) {
+        std::string prefix = "dram.memory_configs." + config_name + ".ac_parameters.";
+        
+        DramTiming timing;
+        timing.tCL = sc_time(config.get_double(prefix + "tCL_ns", 14), SC_NS);
+        timing.tRCD = sc_time(config.get_double(prefix + "tRCD_ns", 14), SC_NS);
+        timing.tRP = sc_time(config.get_double(prefix + "tRP_ns", 14), SC_NS);
+        timing.tRAS = sc_time(config.get_double(prefix + "tRAS_ns", 32), SC_NS);
+        timing.tWR = sc_time(config.get_double(prefix + "tWR_ns", 15), SC_NS);
+        timing.tRFC = sc_time(config.get_double(prefix + "tRFC_ns", 350), SC_NS);
+        timing.tREFI = sc_time(config.get_double(prefix + "tREFI_ns", 7800), SC_NS);
+        timing.tBurst = sc_time(config.get_double(prefix + "tBurst_ns", 4), SC_NS);
+        timing.tCCDL = sc_time(config.get_double(prefix + "tCCDL_ns", 4), SC_NS);
+        timing.tCCDS = sc_time(config.get_double(prefix + "tCCDS_ns", 4), SC_NS);
+        timing.tRRDL = sc_time(config.get_double(prefix + "tRRDL_ns", 6), SC_NS);
+        timing.tRRDS = sc_time(config.get_double(prefix + "tRRDS_ns", 4), SC_NS);
+        return timing;
     }
     
     // Helper functions to parse memory type and speed grade from strings
@@ -514,27 +644,216 @@ private:
         }
     }
     
-    // Refresh process (periodic background refresh)
+    // Refresh process with multiple refresh schemes
     void refresh_process() {
+        uint32_t refresh_counter = 0;
+        uint32_t distributed_bank_index = 0;
+        
         while (true) {
-            wait(m_timing.tREFI);
+            sc_time refresh_interval = get_refresh_interval();
+            wait(refresh_interval);
             
-            // Perform refresh on all banks
-            for (auto& bank : m_banks) {
-                if (bank.state == BankState::ACTIVE) {
-                    precharge_bank(bank);
-                }
-                
-                bank.state = BankState::REFRESHING;
-                wait(m_timing.tRFC);
-                bank.state = BankState::IDLE;
+            switch (m_timing.refresh_scheme) {
+                case RefreshScheme::ALL_BANK_REFRESH:
+                    perform_all_bank_refresh();
+                    break;
+                    
+                case RefreshScheme::SAME_BANK_REFRESH:
+                    perform_same_bank_refresh(refresh_counter % NUM_BANK_GROUPS);
+                    break;
+                    
+                case RefreshScheme::PER_BANK_REFRESH:
+                    perform_per_bank_refresh(refresh_counter % get_total_banks());
+                    break;
+                    
+                case RefreshScheme::DISTRIBUTED_REFRESH:
+                    perform_distributed_refresh(distributed_bank_index);
+                    distributed_bank_index = (distributed_bank_index + 1) % get_total_banks();
+                    break;
+                    
+                case RefreshScheme::REFRESH_MANAGEMENT_UNIT:
+                    perform_rmu_refresh(refresh_counter);
+                    break;
+                    
+                default:
+                    perform_all_bank_refresh(); // Fallback
+                    break;
             }
             
+            refresh_counter++;
             m_stats.refresh_cycles++;
             
             if (m_debug_enable) {
-                std::cout << sc_time_stamp() << " | DramController: Refresh cycle completed" << std::endl;
+                std::cout << sc_time_stamp() << " | DramController: " 
+                          << refresh_scheme_to_string(m_timing.refresh_scheme) 
+                          << " refresh cycle " << refresh_counter << " completed" << std::endl;
             }
+        }
+    }
+    
+    // All Bank Refresh - traditional DDR4 approach
+    void perform_all_bank_refresh() {
+        // Check for refresh conflicts (commands in progress)
+        bool conflict_detected = false;
+        for (const auto& bank : m_banks) {
+            if (bank.state != BankState::IDLE && bank.state != BankState::REFRESHING) {
+                conflict_detected = true;
+                break;
+            }
+        }
+        
+        if (conflict_detected) {
+            m_stats.refresh_conflicts++;
+            if (m_debug_enable) {
+                std::cout << sc_time_stamp() << " | DramController: Refresh conflict detected, waiting..." << std::endl;
+            }
+            // Wait for ongoing operations to complete
+            wait(m_timing.tBurst * 2);
+        }
+        
+        sc_time refresh_start_time = sc_time_stamp();
+        
+        // Precharge all active banks
+        for (auto& bank : m_banks) {
+            if (bank.state == BankState::ACTIVE) {
+                precharge_bank(bank);
+            }
+            bank.state = BankState::REFRESHING;
+        }
+        
+        // Wait for all-bank refresh cycle time
+        wait(m_timing.tRFCab);
+        
+        // Return all banks to idle state
+        for (auto& bank : m_banks) {
+            bank.state = BankState::IDLE;
+        }
+        
+        m_stats.all_bank_refreshes++;
+        m_stats.total_refresh_latency += (sc_time_stamp() - refresh_start_time);
+    }
+    
+    // Same Bank Refresh - DDR5/LPDDR5 optimization
+    void perform_same_bank_refresh(uint32_t bank_group_id) {
+        if (!has_bank_groups() || bank_group_id >= NUM_BANK_GROUPS) {
+            perform_all_bank_refresh(); // Fallback for DDR4
+            return;
+        }
+        
+        sc_time refresh_start_time = sc_time_stamp();
+        
+        // Refresh all banks in the specified bank group
+        for (uint32_t bank_id = 0; bank_id < NUM_BANKS; bank_id++) {
+            uint32_t global_bank_id = bank_group_id * NUM_BANKS + bank_id;
+            if (global_bank_id < m_banks.size()) {
+                auto& bank = m_banks[global_bank_id];
+                
+                if (bank.state == BankState::ACTIVE) {
+                    precharge_bank(bank);
+                }
+                bank.state = BankState::REFRESHING;
+            }
+        }
+        
+        // Wait for same-bank refresh cycle time
+        wait(m_timing.tRFCsb);
+        
+        // Return banks to idle state
+        for (uint32_t bank_id = 0; bank_id < NUM_BANKS; bank_id++) {
+            uint32_t global_bank_id = bank_group_id * NUM_BANKS + bank_id;
+            if (global_bank_id < m_banks.size()) {
+                m_banks[global_bank_id].state = BankState::IDLE;
+            }
+        }
+        
+        m_stats.same_bank_refreshes++;
+        m_stats.total_refresh_latency += (sc_time_stamp() - refresh_start_time);
+    }
+    
+    // Per Bank Refresh - fine-grained DDR5/LPDDR5
+    void perform_per_bank_refresh(uint32_t bank_index) {
+        if (bank_index >= m_banks.size()) {
+            return;
+        }
+        
+        sc_time refresh_start_time = sc_time_stamp();
+        auto& bank = m_banks[bank_index];
+        
+        // Check if bank is busy
+        if (bank.state != BankState::IDLE) {
+            if (bank.state == BankState::ACTIVE) {
+                precharge_bank(bank);
+            } else {
+                m_stats.refresh_conflicts++;
+                wait(m_timing.tBurst); // Wait for ongoing operation
+            }
+        }
+        
+        // Perform per-bank refresh
+        bank.state = BankState::REFRESHING;
+        wait(m_timing.tRFCpb);
+        bank.state = BankState::IDLE;
+        
+        m_stats.per_bank_refreshes++;
+        m_stats.total_refresh_latency += (sc_time_stamp() - refresh_start_time);
+    }
+    
+    // Distributed Refresh - LPDDR5 power optimization
+    void perform_distributed_refresh(uint32_t bank_index) {
+        // Similar to per-bank but with distributed timing
+        perform_per_bank_refresh(bank_index);
+        m_stats.distributed_refreshes++;
+        
+        // Additional power optimization delay
+        if (m_timing.refresh_granularity > 8192) {
+            wait(m_timing.tREFIpb / 4); // Spread refresh load
+        }
+    }
+    
+    // Refresh Management Unit (RMU) - advanced DDR5
+    void perform_rmu_refresh(uint32_t refresh_counter) {
+        // Intelligent refresh based on access patterns
+        // For simulation, use a hybrid approach
+        
+        if (refresh_counter % 4 == 0) {
+            // Every 4th cycle, do all-bank refresh for consistency
+            perform_all_bank_refresh();
+        } else {
+            // Use per-bank refresh for efficiency
+            uint32_t target_bank = refresh_counter % get_total_banks();
+            perform_per_bank_refresh(target_bank);
+        }
+    }
+    
+    // Helper functions for refresh schemes
+    sc_time get_refresh_interval() const {
+        switch (m_timing.refresh_scheme) {
+            case RefreshScheme::ALL_BANK_REFRESH:
+                return m_timing.tREFI;
+            case RefreshScheme::SAME_BANK_REFRESH:
+                return m_timing.tREFI / NUM_BANK_GROUPS;
+            case RefreshScheme::PER_BANK_REFRESH:
+            case RefreshScheme::DISTRIBUTED_REFRESH:
+                return m_timing.tREFIpb;
+            case RefreshScheme::REFRESH_MANAGEMENT_UNIT:
+                return m_timing.tREFI / 2; // Adaptive interval
+            default:
+                return m_timing.tREFI;
+        }
+    }
+    
+    uint32_t get_total_banks() const {
+        return NUM_BANKS * NUM_BANK_GROUPS;
+    }
+    
+    std::string refresh_scheme_to_string(RefreshScheme scheme) const {
+        switch (scheme) {
+            case RefreshScheme::ALL_BANK_REFRESH: return "ALL_BANK";
+            case RefreshScheme::SAME_BANK_REFRESH: return "SAME_BANK";
+            case RefreshScheme::PER_BANK_REFRESH: return "PER_BANK";
+            case RefreshScheme::DISTRIBUTED_REFRESH: return "DISTRIBUTED";
+            case RefreshScheme::REFRESH_MANAGEMENT_UNIT: return "RMU";
+            default: return "UNKNOWN";
         }
     }
     
@@ -682,6 +1001,20 @@ inline DramTiming DramTimingFactory::createDDR4Timing(SpeedGrade grade) {
     timing.tRFC = sc_time(350, SC_NS);     // 350ns for 8Gb chips
     timing.tREFI = sc_time(7800, SC_NS);   // 7.8μs refresh interval
     
+    // DDR4 Bank Group specific timings (same values since no bank groups)
+    timing.tCCDL = sc_time(4, SC_NS);      // Same as tBurst for DDR4
+    timing.tCCDS = sc_time(4, SC_NS);      // Same as tBurst for DDR4
+    timing.tRRDL = sc_time(6, SC_NS);      // Row-to-row delay
+    timing.tRRDS = sc_time(4, SC_NS);      // Row-to-row delay (same bank)
+    
+    // DDR4 refresh scheme parameters (traditional all-bank refresh)
+    timing.refresh_scheme = RefreshScheme::ALL_BANK_REFRESH;
+    timing.tRFCab = sc_time(350, SC_NS);   // All bank refresh cycle time
+    timing.tRFCsb = sc_time(350, SC_NS);   // Same as all bank for DDR4
+    timing.tRFCpb = sc_time(60, SC_NS);    // Per bank refresh (if supported)
+    timing.tREFIpb = sc_time(488, SC_NS);  // Per bank refresh interval (tREFI/16)
+    timing.refresh_granularity = 8192;    // 8K rows per refresh
+    
     return timing;
 }
 
@@ -727,6 +1060,20 @@ inline DramTiming DramTimingFactory::createDDR5Timing(SpeedGrade grade) {
     timing.tWR = sc_time(12, SC_NS);       // Faster write recovery
     timing.tRFC = sc_time(295, SC_NS);     // 295ns for 16Gb chips
     timing.tREFI = sc_time(3900, SC_NS);   // 3.9μs refresh interval (2x faster)
+    
+    // DDR5 Bank Group specific timings
+    timing.tCCDL = sc_time(6, SC_NS);      // CAS to CAS Long (different bank group)
+    timing.tCCDS = sc_time(4, SC_NS);      // CAS to CAS Short (same bank group)
+    timing.tRRDL = sc_time(6, SC_NS);      // Row to Row Long (different bank group)
+    timing.tRRDS = sc_time(4, SC_NS);      // Row to Row Short (same bank group)
+    
+    // DDR5 refresh scheme parameters (default to same bank refresh for DDR5)
+    timing.refresh_scheme = RefreshScheme::SAME_BANK_REFRESH;
+    timing.tRFCab = sc_time(295, SC_NS);   // All bank refresh cycle time
+    timing.tRFCsb = sc_time(100, SC_NS);   // Same bank refresh cycle time
+    timing.tRFCpb = sc_time(50, SC_NS);    // Per bank refresh cycle time
+    timing.tREFIpb = sc_time(244, SC_NS);  // Per bank refresh interval (tREFI/16)
+    timing.refresh_granularity = 16384;   // 16K rows per refresh
     
     return timing;
 }
@@ -774,7 +1121,126 @@ inline DramTiming DramTimingFactory::createLPDDR5Timing(SpeedGrade grade) {
     timing.tRFC = sc_time(180, SC_NS);     // 180ns refresh (mobile optimized)
     timing.tREFI = sc_time(3900, SC_NS);   // 3.9μs refresh interval
     
+    // LPDDR5 Bank Group specific timings (optimized for mobile)
+    timing.tCCDL = sc_time(5, SC_NS);      // CAS to CAS Long (different bank group)
+    timing.tCCDS = sc_time(3, SC_NS);      // CAS to CAS Short (same bank group)  
+    timing.tRRDL = sc_time(5, SC_NS);      // Row to Row Long (different bank group)
+    timing.tRRDS = sc_time(3, SC_NS);      // Row to Row Short (same bank group)
+    
+    // LPDDR5 refresh scheme parameters (default to distributed refresh for power optimization)
+    timing.refresh_scheme = RefreshScheme::DISTRIBUTED_REFRESH;
+    timing.tRFCab = sc_time(180, SC_NS);   // All bank refresh cycle time
+    timing.tRFCsb = sc_time(90, SC_NS);    // Same bank refresh cycle time  
+    timing.tRFCpb = sc_time(30, SC_NS);    // Per bank refresh cycle time (mobile optimized)
+    timing.tREFIpb = sc_time(244, SC_NS);  // Per bank refresh interval (tREFI/16)
+    timing.refresh_granularity = 16384;   // 16K rows per refresh
+    
     return timing;
+}
+
+// JSON Configuration parsing helper functions
+inline MemoryType parseMemoryType(const std::string& type_str) {
+    if (type_str == "DDR4") return MemoryType::DDR4;
+    else if (type_str == "DDR5") return MemoryType::DDR5;
+    else if (type_str == "LPDDR5") return MemoryType::LPDDR5;
+    else {
+        std::cerr << "Warning: Unknown memory type '" << type_str << "', defaulting to DDR4" << std::endl;
+        return MemoryType::DDR4;
+    }
+}
+
+inline SpeedGrade parseSpeedGrade(const std::string& grade_str) {
+    if (grade_str == "DDR4_2400") return SpeedGrade::DDR4_2400;
+    else if (grade_str == "DDR4_2666") return SpeedGrade::DDR4_2666;
+    else if (grade_str == "DDR4_3200") return SpeedGrade::DDR4_3200;
+    else if (grade_str == "DDR4_4266") return SpeedGrade::DDR4_4266;
+    else if (grade_str == "DDR5_4800") return SpeedGrade::DDR5_4800;
+    else if (grade_str == "DDR5_5600") return SpeedGrade::DDR5_5600;
+    else if (grade_str == "DDR5_6400") return SpeedGrade::DDR5_6400;
+    else if (grade_str == "DDR5_8400") return SpeedGrade::DDR5_8400;
+    else if (grade_str == "LPDDR5_5500") return SpeedGrade::LPDDR5_5500;
+    else if (grade_str == "LPDDR5_6400") return SpeedGrade::LPDDR5_6400;
+    else if (grade_str == "LPDDR5_7500") return SpeedGrade::LPDDR5_7500;
+    else if (grade_str == "LPDDR5_8533") return SpeedGrade::LPDDR5_8533;
+    else {
+        std::cerr << "Warning: Unknown speed grade '" << grade_str << "', defaulting to DDR4_3200" << std::endl;
+        return SpeedGrade::DDR4_3200;
+    }
+}
+
+inline RefreshScheme parseRefreshScheme(const std::string& scheme_str) {
+    if (scheme_str == "ALL_BANK_REFRESH") return RefreshScheme::ALL_BANK_REFRESH;
+    else if (scheme_str == "SAME_BANK_REFRESH") return RefreshScheme::SAME_BANK_REFRESH;
+    else if (scheme_str == "PER_BANK_REFRESH") return RefreshScheme::PER_BANK_REFRESH;
+    else if (scheme_str == "DISTRIBUTED_REFRESH") return RefreshScheme::DISTRIBUTED_REFRESH;
+    else if (scheme_str == "REFRESH_MANAGEMENT_UNIT") return RefreshScheme::REFRESH_MANAGEMENT_UNIT;
+    else {
+        std::cerr << "Warning: Unknown refresh scheme '" << scheme_str << "', defaulting to ALL_BANK_REFRESH" << std::endl;
+        return RefreshScheme::ALL_BANK_REFRESH;
+    }
+}
+
+inline DramTiming create_timing_from_config(const JsonConfig& config) {
+    try {
+        // Parse basic memory configuration
+        auto memory_type = parseMemoryType(config.get_string("dram.memory_type", "DDR4"));
+        auto speed_grade = parseSpeedGrade(config.get_string("dram.speed_grade", "DDR4_3200"));
+        
+        // Create base timing from predefined configuration or selected config
+        DramTiming timing;
+        std::string selected_config = config.get_string("dram.selected_config", "");
+        
+        if (!selected_config.empty()) {
+            // Load from predefined memory configuration
+            std::string config_prefix = "dram.memory_configs." + selected_config + ".ac_parameters.";
+            
+            timing.tCL = sc_time(config.get_double(config_prefix + "tCL_ns", 14.0), SC_NS);
+            timing.tRCD = sc_time(config.get_double(config_prefix + "tRCD_ns", 14.0), SC_NS);
+            timing.tRP = sc_time(config.get_double(config_prefix + "tRP_ns", 14.0), SC_NS);
+            timing.tRAS = sc_time(config.get_double(config_prefix + "tRAS_ns", 32.0), SC_NS);
+            timing.tWR = sc_time(config.get_double(config_prefix + "tWR_ns", 15.0), SC_NS);
+            timing.tRFC = sc_time(config.get_double(config_prefix + "tRFC_ns", 350.0), SC_NS);
+            timing.tREFI = sc_time(config.get_double(config_prefix + "tREFI_ns", 7800.0), SC_NS);
+            timing.tBurst = sc_time(config.get_double(config_prefix + "tBurst_ns", 2.5), SC_NS);
+            timing.tCCDL = sc_time(config.get_double(config_prefix + "tCCDL_ns", 4.0), SC_NS);
+            timing.tCCDS = sc_time(config.get_double(config_prefix + "tCCDS_ns", 4.0), SC_NS);
+            timing.tRRDL = sc_time(config.get_double(config_prefix + "tRRDL_ns", 6.0), SC_NS);
+            timing.tRRDS = sc_time(config.get_double(config_prefix + "tRRDS_ns", 4.0), SC_NS);
+            
+            // Load refresh parameters if available
+            timing.tRFCab = sc_time(config.get_double(config_prefix + "tRFCab_ns", 350.0), SC_NS);
+            timing.tRFCsb = sc_time(config.get_double(config_prefix + "tRFCsb_ns", 120.0), SC_NS);
+            timing.tRFCpb = sc_time(config.get_double(config_prefix + "tRFCpb_ns", 60.0), SC_NS);
+            timing.tREFIpb = sc_time(config.get_double(config_prefix + "tREFIpb_ns", 488.0), SC_NS);
+            timing.refresh_granularity = config.get_int(config_prefix + "refresh_granularity", 8192);
+            
+        } else {
+            // Use factory defaults for the memory type and speed grade
+            timing = DramTimingFactory::create(memory_type, speed_grade);
+        }
+        
+        // Override with custom timings if enabled
+        if (config.get_bool("dram.custom_timings.enable_custom", false)) {
+            timing.tCL = sc_time(config.get_double("dram.custom_timings.tCL_ns", timing.tCL.to_seconds() * 1e9), SC_NS);
+            timing.tRCD = sc_time(config.get_double("dram.custom_timings.tRCD_ns", timing.tRCD.to_seconds() * 1e9), SC_NS);
+            timing.tRP = sc_time(config.get_double("dram.custom_timings.tRP_ns", timing.tRP.to_seconds() * 1e9), SC_NS);
+            timing.tRAS = sc_time(config.get_double("dram.custom_timings.tRAS_ns", timing.tRAS.to_seconds() * 1e9), SC_NS);
+            timing.tWR = sc_time(config.get_double("dram.custom_timings.tWR_ns", timing.tWR.to_seconds() * 1e9), SC_NS);
+            timing.tRFC = sc_time(config.get_double("dram.custom_timings.tRFC_ns", timing.tRFC.to_seconds() * 1e9), SC_NS);
+            timing.tREFI = sc_time(config.get_double("dram.custom_timings.tREFI_ns", timing.tREFI.to_seconds() * 1e9), SC_NS);
+            timing.tBurst = sc_time(config.get_double("dram.custom_timings.tBurst_ns", timing.tBurst.to_seconds() * 1e9), SC_NS);
+        }
+        
+        // Set refresh scheme (can be overridden from JSON)
+        auto refresh_scheme_str = config.get_string("dram.refresh_scheme", "ALL_BANK_REFRESH");
+        timing.refresh_scheme = parseRefreshScheme(refresh_scheme_str);
+        
+        return timing;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error parsing DRAM configuration: " << e.what() << ", using DDR4 defaults" << std::endl;
+        return DramTimingFactory::create(MemoryType::DDR4, SpeedGrade::DDR4_3200);
+    }
 }
 
 #endif

@@ -125,14 +125,14 @@ class SweepRunner:
         print(f"{Colors.YELLOW}Building simulator for target '{self.target}'...{Colors.NC}")
         
         # Clean build
-        result = subprocess.run(['make', 'clean'], capture_output=True, text=True)
+        result = subprocess.run(['make', 'clean'], capture_output=True, text=True, env=os.environ)
         
         # Build specific target
         make_target = self.target_configs[self.target]['make_target']
         if make_target == "sim":  # Default make target
-            result = subprocess.run(['make'], capture_output=True, text=True)
+            result = subprocess.run(['make'], capture_output=True, text=True, env=os.environ)
         else:
-            result = subprocess.run(['make', make_target], capture_output=True, text=True)
+            result = subprocess.run(['make', make_target], capture_output=True, text=True, env=os.environ)
             
         if result.returncode != 0:
             print(f"{Colors.RED}Build failed for target '{self.target}'!{Colors.NC}")
@@ -263,7 +263,8 @@ Modified File: {self.sweep_config['config_file']}
             result = subprocess.run([executable, str(tc_config_dir)], 
                                   timeout=timeout, 
                                   capture_output=True, 
-                                  text=True)
+                                  text=True,
+                                  env=os.environ)
             
             end_time = time.time()
             duration = int(end_time - start_time)
@@ -281,12 +282,12 @@ Modified File: {self.sweep_config['config_file']}
                         print(f"{Colors.BLUE}Moved {metric_file} to {tc_config_dir}{Colors.NC}")
                 
                 # Extract performance metrics from files or console output
-                throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps = self.extract_performance_metrics(tc_config_dir, result.stdout)
+                throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps, traffic_total, traffic_sent, traffic_completed, traffic_completion_rate = self.extract_performance_metrics(tc_config_dir, result.stdout)
                 if throughput and throughput != "0":
                     print(f"{Colors.YELLOW}Performance: {throughput} cps, {sim_time} ms, {latency} ns avg, p95={latency_p95} ns, {bw_mbps} MB/s{Colors.NC}")
                 
                 # Store result
-                self.results.append(f"{tc_name},{value},{throughput},{sim_time},{latency},{latency_p50},{latency_p95},{latency_p99},{latency_stddev},{bw_mbps},PASSED")
+                self.results.append(f"{tc_name},{value},{throughput},{sim_time},{latency},{latency_p50},{latency_p95},{latency_p99},{latency_stddev},{bw_mbps},{traffic_total},{traffic_sent},{traffic_completed},{traffic_completion_rate},PASSED")
                 
                 # Create test case summary
                 self.create_tc_result(tc_config_dir, tc_name, value, "PASSED", duration)
@@ -299,14 +300,14 @@ Modified File: {self.sweep_config['config_file']}
                 
                 # Note: Log files are now generated directly in TC directories
                 
-                self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,FAILED")
+                self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,0,0,0,0.0,FAILED")
                 self.create_tc_result(tc_config_dir, tc_name, value, "FAILED", duration)
                 
                 return False
                 
         except subprocess.TimeoutExpired:
             print(f"{Colors.RED}✗ {tc_name} TIMEOUT{Colors.NC}")
-            self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,TIMEOUT")
+            self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,0,0,0,0.0,TIMEOUT")
             self.create_tc_result(tc_config_dir, tc_name, value, "TIMEOUT", 30)
             return False
             
@@ -325,6 +326,12 @@ Modified File: {self.sweep_config['config_file']}
         latency_p99 = "0"
         latency_stddev = "0"
         bw_mbps = "0"
+        
+        # TrafficGenerator statistics
+        traffic_total = "0"
+        traffic_sent = "0"
+        traffic_completed = "0"
+        traffic_completion_rate = "0.0"
         
         # Read metrics from CSV file
         if metrics_csv_path.exists():
@@ -351,6 +358,14 @@ Modified File: {self.sweep_config['config_file']}
                                 latency_stddev = value
                             elif metric == "bandwidth_mbps":
                                 bw_mbps = value
+                            elif metric == "traffic_total_transactions":
+                                traffic_total = value
+                            elif metric == "traffic_sent_transactions":
+                                traffic_sent = value
+                            elif metric == "traffic_completed_transactions":
+                                traffic_completed = value
+                            elif metric == "traffic_completion_rate":
+                                traffic_completion_rate = value
                 print(f"{Colors.GREEN}Successfully read metrics from {metrics_csv_path}{Colors.NC}")
             except Exception as e:
                 print(f"{Colors.YELLOW}Warning: Failed to read metrics.csv: {e}{Colors.NC}")
@@ -386,6 +401,18 @@ Modified File: {self.sweep_config['config_file']}
                         latency_p99 = str(latency_data["p99_ns"])
                     if latency_stddev == "0" and "stddev_ns" in latency_data:
                         latency_stddev = str(latency_data["stddev_ns"])
+                
+                # Extract TrafficGenerator metrics if available
+                if "traffic_generator" in perf_data:
+                    traffic_data = perf_data["traffic_generator"]
+                    if traffic_total == "0" and "total_transactions" in traffic_data:
+                        traffic_total = str(traffic_data["total_transactions"])
+                    if traffic_sent == "0" and "sent_transactions" in traffic_data:
+                        traffic_sent = str(traffic_data["sent_transactions"])
+                    if traffic_completed == "0" and "completed_transactions" in traffic_data:
+                        traffic_completed = str(traffic_data["completed_transactions"])
+                    if traffic_completion_rate == "0.0" and "completion_rate" in traffic_data:
+                        traffic_completion_rate = str(traffic_data["completion_rate"])
                     
                 print(f"{Colors.GREEN}Successfully read performance data from {performance_json_path}{Colors.NC}")
             except Exception as e:
@@ -443,7 +470,7 @@ Modified File: {self.sweep_config['config_file']}
                 except Exception as e:
                     print(f"{Colors.YELLOW}Warning: Console parsing failed: {e}{Colors.NC}")
                     
-        return throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps
+        return throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps, traffic_total, traffic_sent, traffic_completed, traffic_completion_rate
             
     def create_tc_result(self, tc_results_dir, tc_name, value, status, duration):
         """Create test case result file"""
@@ -492,7 +519,7 @@ Results: {tc_results_dir}
         # Create CSV results
         csv_file = self.sweep_results_dir / "sweep_results.csv"
         with open(csv_file, 'w') as f:
-            f.write(f"TestCase,{self.sweep_config['parameter']},SimSpeed_CPS,SimTime_MS,Latency_Avg_NS,Latency_P50_NS,Latency_P95_NS,Latency_P99_NS,Latency_StdDev_NS,BW_MBPS,Status\n")
+            f.write(f"TestCase,{self.sweep_config['parameter']},SimSpeed_CPS,SimTime_MS,Latency_Avg_NS,Latency_P50_NS,Latency_P95_NS,Latency_P99_NS,Latency_StdDev_NS,BW_MBPS,Traffic_Total,Traffic_Sent,Traffic_Completed,Traffic_Completion_Rate,Status\n")
             for result in self.results:
                 f.write(result + "\n")
                 

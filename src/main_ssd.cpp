@@ -318,6 +318,14 @@ int sc_main(int argc, char* argv[]) {
             metrics_csv << "pcie_upstream_crc_errors," << pcie_upstream.get_total_crc_errors() << ",count\n";
             metrics_csv << "pcie_upstream_utilization_current," << std::setprecision(1) << pcie_upstream.get_current_utilization() << ",percent\n";
             metrics_csv << "pcie_upstream_utilization_avg," << std::setprecision(1) << pcie_upstream.get_average_utilization() << ",percent\n";
+            
+            // TrafficGenerator statistics
+            metrics_csv << "traffic_total_transactions," << host_system.get_total_transactions() << ",count\n";
+            metrics_csv << "traffic_sent_transactions," << host_system.get_sent_transactions() << ",count\n";
+            metrics_csv << "traffic_completed_transactions," << host_system.get_completed_transactions() << ",count\n";
+            metrics_csv << "traffic_completion_rate," << std::setprecision(4) << host_system.get_completion_rate() << ",ratio\n";
+            metrics_csv << "traffic_generation_complete," << (host_system.is_generation_complete() ? 1 : 0) << ",boolean\n";
+            
             metrics_csv.close();
         }
         
@@ -335,6 +343,13 @@ int sc_main(int argc, char* argv[]) {
             performance_json << "    \"total_requests\": " << total_requests << ",\n";
             performance_json << "    \"cache_hit_rate\": " << std::setprecision(4) << cache_hit_rate << ",\n";
             performance_json << "    \"bandwidth_mbps\": " << std::setprecision(1) << bandwidth_mbps << "\n";
+            performance_json << "  },\n";
+            performance_json << "  \"traffic_generator\": {\n";
+            performance_json << "    \"total_transactions\": " << host_system.get_total_transactions() << ",\n";
+            performance_json << "    \"sent_transactions\": " << host_system.get_sent_transactions() << ",\n";
+            performance_json << "    \"completed_transactions\": " << host_system.get_completed_transactions() << ",\n";
+            performance_json << "    \"completion_rate\": " << std::setprecision(4) << host_system.get_completion_rate() << ",\n";
+            performance_json << "    \"generation_complete\": " << (host_system.is_generation_complete() ? "true" : "false") << "\n";
             performance_json << "  },\n";
             performance_json << "  \"latency\": {\n";
             performance_json << "    \"enabled\": true,\n";

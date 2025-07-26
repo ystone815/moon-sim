@@ -2,12 +2,15 @@
   "dram": {
     "memory_type": "DDR4",
     "speed_grade": "DDR4_3200",
+    "selected_config": "DDR4_baseline",
     "num_banks": 8,
+    "num_bank_groups": 1,
     "num_ranks": 1,
     "page_size": 1024,
     "burst_length": 8,
     "auto_precharge": true,
     "refresh_enable": true,
+    "refresh_scheme": "ALL_BANK_REFRESH",
     "debug_enable": false,
     
     "custom_timings": {
@@ -19,45 +22,201 @@
       "tWR_ns": 15,
       "tRFC_ns": 350,
       "tREFI_ns": 7800,
-      "tBurst_ns": 2.5
+      "tBurst_ns": 2.5,
+      "tCCDL_ns": 4.0,
+      "tCCDS_ns": 4.0,
+      "tRRDL_ns": 6.0,
+      "tRRDS_ns": 4.0
     },
     
     "memory_configs": {
       "DDR4_baseline": {
         "memory_type": "DDR4",
-        "speed_grade": "DDR4_3200"
+        "speed_grade": "DDR4_3200",
+        "num_banks": 8,
+        "num_bank_groups": 1,
+        "ac_parameters": {
+          "tCL_ns": 14.0,
+          "tRCD_ns": 14.0,
+          "tRP_ns": 14.0,
+          "tRAS_ns": 32.0,
+          "tWR_ns": 15.0,
+          "tRFC_ns": 350.0,
+          "tREFI_ns": 7800.0,
+          "tBurst_ns": 2.5,
+          "tCCDL_ns": 4.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0,
+          "tRFCab_ns": 350.0,
+          "tRFCsb_ns": 120.0,
+          "tRFCpb_ns": 60.0,
+          "tREFIpb_ns": 488.0,
+          "refresh_granularity": 8192
+        }
       },
       "DDR4_high_performance": {
         "memory_type": "DDR4", 
-        "speed_grade": "DDR4_4266"
+        "speed_grade": "DDR4_4266",
+        "num_banks": 8,
+        "num_bank_groups": 1,
+        "ac_parameters": {
+          "tCL_ns": 13.0,
+          "tRCD_ns": 13.0,
+          "tRP_ns": 13.0,
+          "tRAS_ns": 30.0,
+          "tWR_ns": 15.0,
+          "tRFC_ns": 350.0,
+          "tREFI_ns": 7800.0,
+          "tBurst_ns": 1.87,
+          "tCCDL_ns": 4.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0,
+          "tRFCab_ns": 350.0,
+          "tRFCsb_ns": 120.0,
+          "tRFCpb_ns": 60.0,
+          "tREFIpb_ns": 488.0,
+          "refresh_granularity": 8192
+        }
       },
       "DDR5_baseline": {
         "memory_type": "DDR5",
-        "speed_grade": "DDR5_4800"
+        "speed_grade": "DDR5_4800",
+        "num_banks": 4,
+        "num_bank_groups": 8,
+        "ac_parameters": {
+          "tCL_ns": 10.0,
+          "tRCD_ns": 10.0,
+          "tRP_ns": 10.0,
+          "tRAS_ns": 25.0,
+          "tWR_ns": 12.0,
+          "tRFC_ns": 295.0,
+          "tREFI_ns": 3900.0,
+          "tBurst_ns": 1.67,
+          "tCCDL_ns": 6.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0,
+          "tRFCab_ns": 295.0,
+          "tRFCsb_ns": 100.0,
+          "tRFCpb_ns": 50.0,
+          "tREFIpb_ns": 244.0,
+          "refresh_granularity": 16384
+        }
       },
       "DDR5_high_performance": {
         "memory_type": "DDR5",
-        "speed_grade": "DDR5_6400"
+        "speed_grade": "DDR5_6400",
+        "num_banks": 4,
+        "num_bank_groups": 8,
+        "ac_parameters": {
+          "tCL_ns": 8.0,
+          "tRCD_ns": 8.0,
+          "tRP_ns": 8.0,
+          "tRAS_ns": 21.0,
+          "tWR_ns": 12.0,
+          "tRFC_ns": 295.0,
+          "tREFI_ns": 3900.0,
+          "tBurst_ns": 1.25,
+          "tCCDL_ns": 6.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0,
+          "tRFCab_ns": 295.0,
+          "tRFCsb_ns": 100.0,
+          "tRFCpb_ns": 50.0,
+          "tREFIpb_ns": 244.0,
+          "refresh_granularity": 16384
+        }
       },
       "DDR5_extreme": {
         "memory_type": "DDR5",
-        "speed_grade": "DDR5_8400"
+        "speed_grade": "DDR5_8400",
+        "num_banks": 4,
+        "num_bank_groups": 8,
+        "ac_parameters": {
+          "tCL_ns": 7.0,
+          "tRCD_ns": 7.0,
+          "tRP_ns": 7.0,
+          "tRAS_ns": 18.0,
+          "tWR_ns": 12.0,
+          "tRFC_ns": 295.0,
+          "tREFI_ns": 3900.0,
+          "tBurst_ns": 0.95,
+          "tCCDL_ns": 6.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0,
+          "tRFCab_ns": 295.0,
+          "tRFCsb_ns": 100.0,
+          "tRFCpb_ns": 50.0,
+          "tREFIpb_ns": 244.0,
+          "refresh_granularity": 16384
+        }
       },
       "LPDDR5_mobile": {
         "memory_type": "LPDDR5",
-        "speed_grade": "LPDDR5_6400"
+        "speed_grade": "LPDDR5_6400",
+        "num_banks": 4,
+        "num_bank_groups": 8,
+        "ac_parameters": {
+          "tCL_ns": 7.0,
+          "tRCD_ns": 7.0,
+          "tRP_ns": 7.0,
+          "tRAS_ns": 16.0,
+          "tWR_ns": 10.0,
+          "tRFC_ns": 180.0,
+          "tREFI_ns": 3900.0,
+          "tBurst_ns": 1.25,
+          "tCCDL_ns": 5.0,
+          "tCCDS_ns": 3.0,
+          "tRRDL_ns": 5.0,
+          "tRRDS_ns": 3.0,
+          "tRFCab_ns": 180.0,
+          "tRFCsb_ns": 90.0,
+          "tRFCpb_ns": 30.0,
+          "tREFIpb_ns": 244.0,
+          "refresh_granularity": 16384
+        }
       },
       "LPDDR5_high_end": {
         "memory_type": "LPDDR5",
-        "speed_grade": "LPDDR5_8533"
+        "speed_grade": "LPDDR5_8533",
+        "num_banks": 4,
+        "num_bank_groups": 8,
+        "ac_parameters": {
+          "tCL_ns": 5.0,
+          "tRCD_ns": 5.0,
+          "tRP_ns": 5.0,
+          "tRAS_ns": 13.0,
+          "tWR_ns": 10.0,
+          "tRFC_ns": 180.0,
+          "tREFI_ns": 3900.0,
+          "tBurst_ns": 0.94,
+          "tCCDL_ns": 5.0,
+          "tCCDS_ns": 3.0,
+          "tRRDL_ns": 5.0,
+          "tRRDS_ns": 3.0,
+          "tRFCab_ns": 180.0,
+          "tRFCsb_ns": 90.0,
+          "tRFCpb_ns": 30.0,
+          "tREFIpb_ns": 244.0,
+          "refresh_granularity": 16384
+        }
       }
     }
   },
   
   "comments": {
+    "selected_config": "Choose from predefined configs: DDR4_baseline, DDR4_high_performance, DDR5_baseline, DDR5_high_performance, DDR5_extreme, LPDDR5_mobile, LPDDR5_high_end",
     "memory_type": "Supported types: DDR4, DDR5, LPDDR5",
     "speed_grade": "Available grades: DDR4_2400/2666/3200/4266, DDR5_4800/5600/6400/8400, LPDDR5_5500/6400/7500/8533",
-    "custom_timings": "Set enable_custom=true to override automatic timing calculation",
-    "memory_configs": "Predefined configurations for common use cases"
+    "bank_groups": "DDR4: 1 bank group with 8 banks, DDR5/LPDDR5: 8 bank groups with 4 banks each (32 total)",
+    "ac_parameters": "All timing parameters in nanoseconds, includes Bank Group timings (tCCDL/S, tRRDL/S) and refresh timings",
+    "refresh_scheme": "Supported schemes: ALL_BANK_REFRESH (all banks), SAME_BANK_REFRESH (same bank), PER_BANK_REFRESH (individual banks), DISTRIBUTED_REFRESH (spread refresh)",
+    "refresh_timings": "tRFCab=all bank refresh, tRFCsb=same bank refresh, tRFCpb=per bank refresh, tREFIpb=per bank interval",
+    "custom_timings": "Set enable_custom=true to override predefined configurations",
+    "memory_configs": "Predefined configurations with real AC parameters from datasheets"
   }
 }

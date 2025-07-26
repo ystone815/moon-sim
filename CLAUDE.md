@@ -98,11 +98,13 @@ MOON-SIM implements a high-performance SystemC-based SoC architecture simulation
 
 6. **DramController** (`include/base/dram_controller.h` - Template)
    - **Multi-standard support**: DDR4, DDR5, LPDDR5 memory types
+   - **Bank Group architecture**: DDR4 (8 banks), DDR5/LPDDR5 (8 groups × 4 banks = 32 total)
+   - **Advanced timing models**: tCCDL/tCCDS, tRRDL/tRRDS for bank group optimization
    - **Automatic timing calculation**: Speed grade-based parameter generation
    - **Realistic timing models**: Accurate tCL, tRCD, tRP, tRAS parameters
    - **JSON configuration**: Memory type and speed grade selection
    - **Performance variants**: DDR4-3200/4266, DDR5-4800/6400/8400, LPDDR5-6400/8533
-   - **Banking and refresh**: Configurable banks, ranks, and refresh cycles
+   - **Banking and refresh**: Configurable banks, bank groups, ranks, and refresh cycles
 
 ### Packet System
 
@@ -211,18 +213,51 @@ log/                # Timestamped simulation output logs
   "dram": {
     "memory_type": "DDR4",
     "speed_grade": "DDR4_3200",
+    "selected_config": "DDR4_baseline",
     "num_banks": 8,
-    "num_ranks": 1,
-    "page_size": 1024,
-    "burst_length": 8,
-    "auto_precharge": true,
-    "refresh_enable": true,
-    "debug_enable": false,
+    "num_bank_groups": 1,
     
     "memory_configs": {
-      "DDR4_baseline": {"memory_type": "DDR4", "speed_grade": "DDR4_3200"},
-      "DDR5_high_performance": {"memory_type": "DDR5", "speed_grade": "DDR5_6400"},
-      "LPDDR5_mobile": {"memory_type": "LPDDR5", "speed_grade": "LPDDR5_6400"}
+      "DDR4_baseline": {
+        "memory_type": "DDR4",
+        "speed_grade": "DDR4_3200",
+        "num_banks": 8,
+        "num_bank_groups": 1,
+        "ac_parameters": {
+          "tCL_ns": 14.0,
+          "tRCD_ns": 14.0,
+          "tRP_ns": 14.0,
+          "tRAS_ns": 32.0,
+          "tWR_ns": 15.0,
+          "tRFC_ns": 350.0,
+          "tREFI_ns": 7800.0,
+          "tBurst_ns": 2.5,
+          "tCCDL_ns": 4.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0
+        }
+      },
+      "DDR5_high_performance": {
+        "memory_type": "DDR5",
+        "speed_grade": "DDR5_6400", 
+        "num_banks": 4,
+        "num_bank_groups": 8,
+        "ac_parameters": {
+          "tCL_ns": 8.0,
+          "tRCD_ns": 8.0,
+          "tRP_ns": 8.0,
+          "tRAS_ns": 21.0,
+          "tWR_ns": 12.0,
+          "tRFC_ns": 295.0,
+          "tREFI_ns": 3900.0,
+          "tBurst_ns": 1.25,
+          "tCCDL_ns": 6.0,
+          "tCCDS_ns": 4.0,
+          "tRRDL_ns": 6.0,
+          "tRRDS_ns": 4.0
+        }
+      }
     }
   }
 }
