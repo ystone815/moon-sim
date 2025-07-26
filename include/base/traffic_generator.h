@@ -73,6 +73,11 @@ SC_MODULE(TrafficGenerator) {
     double get_completion_rate() const { 
         return m_num_transactions > 0 ? (double)m_transactions_completed / m_num_transactions : 0.0; 
     }
+    
+    // Method to notify completion of a transaction
+    void notify_completion() {
+        m_transactions_completed++;
+    }
 
     // Updated constructor with new parameter
     TrafficGenerator(sc_module_name name, sc_time interval, unsigned int locality_percentage, unsigned int write_percentage, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable = false, unsigned int start_address = 0, unsigned int end_address = 0xFF, unsigned int address_increment = 0x10);

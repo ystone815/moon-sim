@@ -1,0 +1,149 @@
+
+Info: IndexAllocator: [INIT] Initialized simple index allocator with max_index=100
+0 s | HostSystem_Profiler: Bandwidth profiler initialized with reporting period 100 ms
+HostSystem: Configured with TrafficGenerator and IndexAllocator
+  IndexAllocator max_index: 100
+0 s | SystemLatency: Latency profiler initialized with reporting period 500 ms
+Starting simulation...
+0 s | TrafficGenerator: Starting with pattern=0, template=0
+0 s | TrafficGenerator: Sent READ, cmd: READ, addr: 0, data: 0, databyte: 64, index: 0
+1 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 40, data: 0, databyte: 64, index: 0
+2 ns | TrafficGenerator: Sent READ, cmd: READ, addr: d59, data: 0, databyte: 64, index: 0
+3 ns | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 3729, data: 3013, databyte: 64, index: 0
+4 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 80, data: 0, databyte: 64, index: 0
+5 ns | TrafficGenerator: Sent READ, cmd: READ, addr: c0, data: 0, databyte: 64, index: 0
+6 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 8bd1, data: 0, databyte: 64, index: 0
+7 ns | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 100, data: 1781, databyte: 64, index: 0
+8 ns | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 140, data: 524, databyte: 64, index: 0
+9 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 180, data: 0, databyte: 64, index: 0
+10 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 6c8e, data: 0, databyte: 64, index: 0
+11 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 1c0, data: 0, databyte: 64, index: 0
+12 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 200, data: 0, databyte: 64, index: 0
+20 ns | TrafficGenerator: Sent READ, cmd: READ, addr: 240, data: 0, databyte: 64, index: 0
+30 ns | TrafficGenerator: Sent READ, cmd: READ, addr: b907, data: 0, databyte: 64, index: 0
+115209 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 280, data: 0, databyte: 64, index: 0
+221723 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 2c0, data: 806, databyte: 64, index: 0
+288682 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 300, data: 0, databyte: 64, index: 0
+382041 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 340, data: 654, databyte: 64, index: 0
+479130 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 380, data: 0, databyte: 64, index: 0
+563868 ps | TrafficGenerator: Sent READ, cmd: READ, addr: ffce, data: 0, databyte: 64, index: 0
+665277 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 3263, data: 0, databyte: 64, index: 0
+770282 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 3c0, data: 0, databyte: 64, index: 0
+867818 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 4ce9, data: 0, databyte: 64, index: 0
+989813 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 9be1, data: 1233, databyte: 64, index: 0
+1079307 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 400, data: 365, databyte: 64, index: 0
+1175997 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 95a5, data: 0, databyte: 64, index: 0
+1276279 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 407e, data: 0, databyte: 64, index: 0
+1388263 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 7941, data: 0, databyte: 64, index: 0
+1497198 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 440, data: 3317, databyte: 64, index: 0
+1563797 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 480, data: 2054, databyte: 64, index: 0
+1649965 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 4c0, data: 0, databyte: 64, index: 0
+1775903 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 500, data: 55, databyte: 64, index: 0
+1859648 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 540, data: 0, databyte: 64, index: 0
+1967755 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 580, data: 2718, databyte: 64, index: 0
+2069710 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 7b4e, data: 2433, databyte: 64, index: 0
+2168464 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 924c, data: 0, databyte: 64, index: 0
+2259602 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 6613, data: 0, databyte: 64, index: 0
+2373726 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 5c0, data: 0, databyte: 64, index: 0
+2464880 ps | TrafficGenerator: Sent READ, cmd: READ, addr: a8e1, data: 0, databyte: 64, index: 0
+2540029 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 600, data: 0, databyte: 64, index: 0
+2638343 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 640, data: 0, databyte: 64, index: 0
+2725148 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 680, data: 0, databyte: 64, index: 0
+2817354 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 6c0, data: 3315, databyte: 64, index: 0
+2907710 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 700, data: 0, databyte: 64, index: 0
+3004819 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 4bff, data: 2167, databyte: 64, index: 0
+3085452 ps | TrafficGenerator: Sent READ, cmd: READ, addr: aa76, data: 0, databyte: 64, index: 0
+3181501 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 740, data: 1092, databyte: 64, index: 0
+3273232 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 780, data: 0, databyte: 64, index: 0
+3416057 ps | TrafficGenerator: Sent READ, cmd: READ, addr: f6ce, data: 0, databyte: 64, index: 0
+3531935 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 7c0, data: 0, databyte: 64, index: 0
+3581935 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 800, data: 0, databyte: 64, index: 0
+3663830 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 840, data: 565, databyte: 64, index: 0
+3761246 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 880, data: 3172, databyte: 64, index: 0
+3861993 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 8c0, data: 97, databyte: 64, index: 0
+3957860 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 900, data: 2620, databyte: 64, index: 0
+4066939 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 940, data: 0, databyte: 64, index: 0
+4162609 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 980, data: 0, databyte: 64, index: 0
+4259822 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 9c0, data: 0, databyte: 64, index: 0
+4364557 ps | TrafficGenerator: Sent READ, cmd: READ, addr: a00, data: 0, databyte: 64, index: 0
+4482613 ps | TrafficGenerator: Sent READ, cmd: READ, addr: a40, data: 0, databyte: 64, index: 0
+4589852 ps | TrafficGenerator: Sent READ, cmd: READ, addr: a80, data: 0, databyte: 64, index: 0
+4671184 ps | TrafficGenerator: Sent READ, cmd: READ, addr: ac0, data: 0, databyte: 64, index: 0
+4736641 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 6be7, data: 0, databyte: 64, index: 0
+4834357 ps | TrafficGenerator: Sent READ, cmd: READ, addr: b00, data: 0, databyte: 64, index: 0
+4927257 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: b40, data: 632, databyte: 64, index: 0
+5030735 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 1439, data: 0, databyte: 64, index: 0
+5111807 ps | TrafficGenerator: Sent READ, cmd: READ, addr: b80, data: 0, databyte: 64, index: 0
+5223402 ps | TrafficGenerator: Sent READ, cmd: READ, addr: bc0, data: 0, databyte: 64, index: 0
+5356083 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 286d, data: 0, databyte: 64, index: 0
+5456572 ps | TrafficGenerator: Sent READ, cmd: READ, addr: c00, data: 0, databyte: 64, index: 0
+5583785 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 5b6c, data: 0, databyte: 64, index: 0
+5694555 ps | TrafficGenerator: Sent READ, cmd: READ, addr: c40, data: 0, databyte: 64, index: 0
+5844555 ps | TrafficGenerator: Sent READ, cmd: READ, addr: c80, data: 0, databyte: 64, index: 0
+5939366 ps | TrafficGenerator: Sent READ, cmd: READ, addr: cc0, data: 0, databyte: 64, index: 0
+6042884 ps | TrafficGenerator: Sent READ, cmd: READ, addr: d00, data: 0, databyte: 64, index: 0
+6146917 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 78d5, data: 718, databyte: 64, index: 0
+6238575 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 8cca, data: 0, databyte: 64, index: 0
+6361684 ps | TrafficGenerator: Sent READ, cmd: READ, addr: d40, data: 0, databyte: 64, index: 0
+6451661 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: d80, data: 2726, databyte: 64, index: 0
+6550426 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: dc0, data: 1488, databyte: 64, index: 0
+6659107 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 4e66, data: 0, databyte: 64, index: 0
+6769988 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 5410, data: 0, databyte: 64, index: 0
+6875105 ps | TrafficGenerator: Sent READ, cmd: READ, addr: e00, data: 0, databyte: 64, index: 0
+6953360 ps | TrafficGenerator: Sent READ, cmd: READ, addr: e40, data: 0, databyte: 64, index: 0
+7077587 ps | TrafficGenerator: Sent READ, cmd: READ, addr: e80, data: 0, databyte: 64, index: 0
+7151214 ps | TrafficGenerator: Sent READ, cmd: READ, addr: ec0, data: 0, databyte: 64, index: 0
+7267452 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: ff3d, data: 2833, databyte: 64, index: 0
+7377708 ps | TrafficGenerator: Sent READ, cmd: READ, addr: f00, data: 0, databyte: 64, index: 0
+7451979 ps | TrafficGenerator: Sent READ, cmd: READ, addr: f40, data: 0, databyte: 64, index: 0
+7531009 ps | TrafficGenerator: Sent READ, cmd: READ, addr: a2e4, data: 0, databyte: 64, index: 0
+7642364 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: 9bc8, data: 3491, databyte: 64, index: 0
+7747681 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 22a1, data: 0, databyte: 64, index: 0
+7848500 ps | TrafficGenerator: Sent WRITE, cmd: WRITE, addr: f80, data: 1313, databyte: 64, index: 0
+7952389 ps | TrafficGenerator: Sent READ, cmd: READ, addr: fc0, data: 0, databyte: 64, index: 0
+8058068 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 1000, data: 0, databyte: 64, index: 0
+8158432 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 1040, data: 0, databyte: 64, index: 0
+8253418 ps | TrafficGenerator: Sent READ, cmd: READ, addr: 1080, data: 0, databyte: 64, index: 0
+8375409 ps | TrafficGenerator: Sent READ, cmd: READ, addr: fb85, data: 0, databyte: 64, index: 0
+8460410 ps | TrafficGenerator: Sent READ, cmd: READ, addr: b6bb, data: 0, databyte: 64, index: 0
+
+Info: /OSCI/SystemC: Simulation stopped by user.
+
+============================================================
+8461410 ps | SystemLatency LATENCY REPORT
+============================================================
+  Period responses: 84
+  Period avg latency: 680.6 ns
+  Period min latency: 125.2 ns
+  Period max latency: 837.6 ns
+  Period median latency: 697.0 ns
+  Period 95th percentile: 791.4 ns
+  Period 99th percentile: 830.9 ns
+  Period std deviation: 109.9 ns
+  Overall avg latency: 680.6 ns
+  Total requests: 92
+  Total responses: 84
+  Pending requests: 8
+============================================================
+
+============================================================
+8461410 ps | HostSystem_Profiler FINAL THROUGHPUT REPORT
+============================================================
+  Total simulation time: 8461410 ps
+  Total bytes transferred: 6080
+  Total packets processed: 95
+  Average throughput: 718556363.54 bytes/sec
+  Average throughput: 685.27 MB/sec
+  Average packet rate: 11227443.18 packets/sec
+============================================================
+TrafficGenerator Statistics:
+  Total transactions: 100
+  Sent transactions: 100
+  Completed transactions: 84
+  Completion rate: 0.8400
+  Generation complete: true
+Simulation finished.
+Performance Metrics:
+Total transactions: 100
+Simulation time: 0 ms (0.0000 seconds)
+Sim Speed: -2147483648 CPS

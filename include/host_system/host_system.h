@@ -44,11 +44,17 @@ private:
     // Internal FIFO for profiling (IndexAllocator -> Profiler -> out)
     std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>> m_profiling_fifo;
     
+    // Internal FIFO for release processing (release_in -> IndexAllocator)
+    std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>> m_release_fifo;
+    
     // Configuration
     void configure_components(const JsonConfig& config, const std::string& config_file_path);
     
     // Process for profiling outgoing packets
     void profiling_process();
+    
+    // Process for handling release packets and tracking completion
+    void release_process();
     
     // Helper method to create index setter function for IndexAllocator
     std::function<void(BasePacket&, unsigned int)> create_index_setter();

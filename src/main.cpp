@@ -188,6 +188,15 @@ int sc_main(int argc, char* argv[]) {
         latency_profiler.force_report();      // ProfilerLatency report  
     }
     host_system.force_profiler_report();  // ProfilerBW report (always enabled)
+    
+    // Report TrafficGenerator statistics
+    std::cout << "TrafficGenerator Statistics:" << std::endl;
+    std::cout << "  Total transactions: " << host_system.get_total_transactions() << std::endl;
+    std::cout << "  Sent transactions: " << host_system.get_sent_transactions() << std::endl;
+    std::cout << "  Completed transactions: " << host_system.get_completed_transactions() << std::endl;
+    std::cout << "  Completion rate: " << std::fixed << std::setprecision(4) << host_system.get_completion_rate() << std::endl;
+    std::cout << "  Generation complete: " << (host_system.is_generation_complete() ? "true" : "false") << std::endl;
+    
     std::cout.flush(); // Ensure profiler reports are written to file
     
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -195,12 +204,12 @@ int sc_main(int argc, char* argv[]) {
     // Calculate performance metrics
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     double duration_seconds = duration.count() / 1000.0;
-    // Note: Transaction count is now configured in TrafficGenerator's config file
-    double transactions_per_second = 100000.0 / duration_seconds; // Default assumption
+    unsigned int total_transactions = host_system.get_total_transactions();
+    double transactions_per_second = total_transactions / duration_seconds;
     
     std::cout << "Simulation finished." << std::endl;
     std::cout << "Performance Metrics:" << std::endl;
-    std::cout << "Total transactions: (configured in TrafficGenerator)" << std::endl;
+    std::cout << "Total transactions: " << total_transactions << std::endl;
     std::cout << "Simulation time: " << duration.count() << " ms (" << duration_seconds << " seconds)" << std::endl;
     std::cout << "Sim Speed: " << static_cast<int>(transactions_per_second) << " CPS" << std::endl;
     
@@ -223,6 +232,13 @@ int sc_main(int argc, char* argv[]) {
         performance_json << "    \"duration_ms\": " << duration.count() << ",\n";
         performance_json << "    \"duration_seconds\": " << std::setprecision(3) << duration_seconds << ",\n";
         performance_json << "    \"systemc_time\": \"" << sc_time_stamp() << "\"\n";
+        performance_json << "  },\n";
+        performance_json << "  \"traffic_generator\": {\n";
+        performance_json << "    \"total_transactions\": " << host_system.get_total_transactions() << ",\n";
+        performance_json << "    \"sent_transactions\": " << host_system.get_sent_transactions() << ",\n";
+        performance_json << "    \"completed_transactions\": " << host_system.get_completed_transactions() << ",\n";
+        performance_json << "    \"completion_rate\": " << std::fixed << std::setprecision(4) << host_system.get_completion_rate() << ",\n";
+        performance_json << "    \"generation_complete\": " << (host_system.is_generation_complete() ? "true" : "false") << "\n";
         performance_json << "  },\n";
         performance_json << "  \"performance\": {\n";
         performance_json << "    \"sim_speed_cps\": " << std::fixed << std::setprecision(0) << transactions_per_second << ",\n";

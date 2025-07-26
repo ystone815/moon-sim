@@ -1,0 +1,55 @@
+
+Info: IndexAllocator: [INIT] Initialized simple index allocator with max_index=100
+0 s | HostSystem_Profiler: Bandwidth profiler initialized with reporting period 100 ms
+HostSystem: Configured with TrafficGenerator and IndexAllocator
+  IndexAllocator max_index: 100
+0 s | SystemLatency: Latency profiler initialized with reporting period 500 ms
+Starting simulation...
+
+============================================================
+100 ms | HostSystem_Profiler THROUGHPUT REPORT
+============================================================
+  Period: 100 ms
+  Bytes transferred: 63991040
+  Packets processed: 999860
+  Throughput: 639910400.00 bytes/sec
+  Throughput: 610.27 MB/sec
+  Packet rate: 9998600.00 packets/sec
+  Total bytes: 63991040
+  Total packets: 999860
+============================================================
+
+Info: /OSCI/SystemC: Simulation stopped by user.
+
+============================================================
+100013452589 ps | SystemLatency LATENCY REPORT
+============================================================
+  Period responses: 999984
+  Period avg latency: 710.1 ns
+  Period min latency: 122.3 ns
+  Period max latency: 926.7 ns
+  Period median latency: 710.2 ns
+  Period 95th percentile: 782.7 ns
+  Period 99th percentile: 812.3 ns
+  Period std deviation: 44.1 ns
+  Overall avg latency: 710.1 ns
+  Total requests: 999992
+  Total responses: 999984
+  Pending requests: 8
+============================================================
+
+============================================================
+100013452589 ps | HostSystem_Profiler FINAL THROUGHPUT REPORT
+============================================================
+  Total simulation time: 100013452589 ps
+  Total bytes transferred: 63999680
+  Total packets processed: 999995
+  Average throughput: 639910715.44 bytes/sec
+  Average throughput: 610.27 MB/sec
+  Average packet rate: 9998604.93 packets/sec
+============================================================
+Simulation finished.
+Performance Metrics:
+Total transactions: (configured in TrafficGenerator)
+Simulation time: 5531 ms (5.53 seconds)
+Sim Speed: 18079 CPS

@@ -43,16 +43,21 @@ void HostSystem::configure_components(const JsonConfig& config, const std::strin
     m_profiler = std::unique_ptr<ProfilerBW<BasePacket>>(
         new ProfilerBW<BasePacket>("profiler", "HostSystem_Profiler", sc_time(100, SC_MS), false)); // Longer period for better performance
     
+    // Create internal FIFO for release processing (32 packet buffer)
+    m_release_fifo = std::unique_ptr<sc_fifo<std::shared_ptr<BasePacket>>>(
+        new sc_fifo<std::shared_ptr<BasePacket>>("release_fifo", 32));
+    
     // Connect components:
     // TrafficGenerator -> internal_fifo -> IndexAllocator -> profiling_fifo -> profiling_process -> out
-    // release_in -> IndexAllocator (for index deallocation)
+    // release_in -> release_process -> release_fifo -> IndexAllocator (for index deallocation + completion tracking)
     m_traffic_generator->out(*m_internal_fifo);
     m_index_allocator->in(*m_internal_fifo);
     m_index_allocator->out(*m_profiling_fifo);
-    m_index_allocator->release_in(release_in);
+    m_index_allocator->release_in(*m_release_fifo);
     
-    // Start profiling process
+    // Start internal processes
     SC_THREAD(profiling_process);
+    SC_THREAD(release_process);
     
     std::cout << "HostSystem: Configured with TrafficGenerator and IndexAllocator" << std::endl;
     std::cout << "  IndexAllocator max_index: " << max_index << std::endl;
@@ -68,6 +73,23 @@ void HostSystem::profiling_process() {
             
             // Forward to external output
             out.write(packet);
+        }
+    }
+}
+
+void HostSystem::release_process() {
+    while (true) {
+        // Read release packet from external release_in
+        auto packet = release_in.read();
+        
+        if (packet) {
+            // Notify TrafficGenerator of completion
+            if (m_traffic_generator) {
+                m_traffic_generator->notify_completion();
+            }
+            
+            // Forward packet to IndexAllocator for index deallocation
+            m_release_fifo->write(packet);
         }
     }
 }
