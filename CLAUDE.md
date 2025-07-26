@@ -259,6 +259,25 @@ log/                # Timestamped simulation output logs
 
 Always follow these modular design principles when developing or modifying the SystemC simulation:
 
+#### 0. **Event-Driven Communication (CRITICAL)**
+- **NEVER use polling loops**: Avoid `while(condition) { wait(1, SC_NS); }` patterns
+- **Use sc_event for process communication**: All inter-process communication must be event-driven
+- **Notify events when data is available**: Use `event.notify()` to wake up waiting processes
+- **Wait on events, not time**: Use `wait(event)` instead of `wait(time)` for synchronization
+- **Performance Impact**: Polling loops can reduce simulation performance by 100x or more
+
+```cpp
+// ❌ NEVER DO THIS - Inefficient polling
+while (queue.empty()) {
+    wait(1, SC_NS);  // Kills performance!
+}
+
+// ✅ ALWAYS DO THIS - Event-driven
+sc_event data_ready;
+// Producer: data_ready.notify();
+// Consumer: wait(data_ready);
+```
+
 #### 1. **Avoid Duplication**
 - Never create redundant components that replicate existing functionality
 - Reuse existing modules (e.g., HostSystem's embedded profiler) instead of creating separate ones

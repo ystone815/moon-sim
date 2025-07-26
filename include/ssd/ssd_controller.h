@@ -76,6 +76,9 @@ SC_MODULE(SSDController) {
     std::unordered_map<uint32_t, std::shared_ptr<SSDCommand>> m_active_commands;
     uint32_t m_next_command_id;
     
+    // Event for command queue notifications
+    sc_event m_command_queued;
+    
     // Statistics
     uint64_t m_total_commands;
     uint64_t m_completed_commands;
@@ -140,6 +143,9 @@ SC_MODULE(SSDController) {
             command->state = CommandState::QUEUED;
             m_command_queue.push(command);
             
+            // Notify dispatch process that command is available
+            m_command_queued.notify();
+            
             // Simulate command processing overhead
             wait(m_config.command_processing_time_ns, SC_NS);
         }
@@ -147,9 +153,9 @@ SC_MODULE(SSDController) {
     
     void command_dispatch_process() {
         while (true) {
-            // Wait for commands in queue
-            while (m_command_queue.empty()) {
-                wait(1, SC_NS);
+            // Wait for command available event
+            if (m_command_queue.empty()) {
+                wait(m_command_queued);
             }
             
             // Get next command from queue

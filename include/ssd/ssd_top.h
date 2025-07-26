@@ -80,7 +80,9 @@ SC_MODULE(SSDTop) {
                          flash_writes(0), average_latency_ns(0.0) {}
     } m_statistics;
     
-    
+    // Events for efficient bridge communication
+    sc_event m_cache_data_ready;
+    sc_event m_dram_data_ready;
     
     // Load configuration from JSON file
     void load_configuration() {
@@ -227,8 +229,11 @@ SC_MODULE(SSDTop) {
                     m_cache_to_controller->write(packet);
                 }
             }
-                
-            wait(1, SC_NS);
+            
+            // Wait for cache data to be ready  
+            if (m_controller_to_cache->num_available() == 0) {
+                wait(m_controller_to_cache->data_written_event());
+            }
         }
     }
     
@@ -236,7 +241,8 @@ SC_MODULE(SSDTop) {
         // This process bridges between Cache and DRAM Controller
         while (true) {
             // Handle cache misses that need DRAM access
-            wait(1, SC_NS);
+            // Wait for DRAM operations to be needed
+            wait(m_dram_data_ready);
         }
     }
     

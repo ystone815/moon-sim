@@ -100,6 +100,10 @@ SC_MODULE(FlashController) {
     // Channel management
     std::vector<ChannelState> m_channels;
     
+    // Events for efficient communication
+    sc_event m_command_available;
+    sc_event m_completion_available;
+    
     // Address translation and mapping
     std::unordered_map<uint64_t, uint64_t> m_logical_to_physical;
     std::vector<uint32_t> m_erase_counts;  // Per-block erase count for wear leveling
@@ -155,6 +159,9 @@ SC_MODULE(FlashController) {
             
             // Route command to appropriate channel
             route_command_to_channel(flash_cmd);
+            
+            // Notify arbitration process
+            m_command_available.notify();
         }
     }
     
@@ -208,8 +215,10 @@ SC_MODULE(FlashController) {
                 }
             }
             
-            // Small delay to prevent busy waiting
-            wait(1, SC_NS);
+            // Wait for new commands to arrive
+            if (all_channels_idle()) {
+                wait(m_command_available);
+            }
         }
     }
     
@@ -226,8 +235,10 @@ SC_MODULE(FlashController) {
                 }
             }
             
-            // Small delay to prevent busy waiting
-            wait(1, SC_NS);
+            // Wait for completions to arrive
+            if (no_completions_pending()) {
+                wait(m_completion_available);
+            }
         }
     }
     
@@ -368,6 +379,10 @@ SC_MODULE(FlashController) {
         dram_out.write(response_packet);
         
         m_completed_flash_commands++;
+        
+        // Notify completion handler and arbitration about available channel
+        m_completion_available.notify();
+        m_command_available.notify();
     }
     
     void perform_wear_leveling() {
@@ -386,6 +401,24 @@ SC_MODULE(FlashController) {
         if (max_it != m_erase_counts.end() && min_it != m_erase_counts.end()) {
             std::swap(*max_it, *min_it);
         }
+    }
+    
+    bool all_channels_idle() const {
+        for (const auto& channel : m_channels) {
+            if (!channel.command_queue.empty() || channel.busy) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    bool no_completions_pending() const {
+        for (uint32_t ch = 0; ch < m_config.num_channels; ch++) {
+            if (flash_in[ch]->num_available() > 0) {
+                return false;
+            }
+        }
+        return true;
     }
     
     std::string get_operation_name(FlashOperation op) const {
