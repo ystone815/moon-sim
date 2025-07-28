@@ -284,6 +284,14 @@ Modified File: {self.sweep_config['config_file']}
                         shutil.move(metric_file, tc_config_dir)
                         print(f"{Colors.BLUE}Moved {metric_file} to {tc_config_dir}{Colors.NC}")
                 
+                # Move VCD files to results directory if they exist
+                import glob
+                vcd_files = glob.glob("*.vcd*")
+                for vcd_file in vcd_files:
+                    if Path(vcd_file).exists():
+                        shutil.move(vcd_file, tc_config_dir)
+                        print(f"{Colors.BLUE}Moved {vcd_file} to {tc_config_dir}{Colors.NC}")
+                
                 # Extract performance metrics from files or console output
                 throughput, sim_time, latency, latency_p50, latency_p95, latency_p99, latency_stddev, bw_mbps, traffic_total, traffic_sent, traffic_completed, traffic_completion_rate = self.extract_performance_metrics(tc_config_dir, result.stdout)
                 if throughput and throughput != "0":
@@ -303,6 +311,14 @@ Modified File: {self.sweep_config['config_file']}
                 
                 # Note: Log files are now generated directly in TC directories
                 
+                # Move VCD files even for failed cases if they exist
+                import glob
+                vcd_files = glob.glob("*.vcd*")
+                for vcd_file in vcd_files:
+                    if Path(vcd_file).exists():
+                        shutil.move(vcd_file, tc_config_dir)
+                        print(f"{Colors.BLUE}Moved {vcd_file} to {tc_config_dir}{Colors.NC}")
+                
                 self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,0,0,0,0.0,FAILED")
                 self.create_tc_result(tc_config_dir, tc_name, value, "FAILED", duration)
                 
@@ -310,6 +326,15 @@ Modified File: {self.sweep_config['config_file']}
                 
         except subprocess.TimeoutExpired:
             print(f"{Colors.RED}✗ {tc_name} TIMEOUT{Colors.NC}")
+            
+            # Move VCD files even for timeout cases if they exist
+            import glob
+            vcd_files = glob.glob("*.vcd*")
+            for vcd_file in vcd_files:
+                if Path(vcd_file).exists():
+                    shutil.move(vcd_file, tc_config_dir)
+                    print(f"{Colors.BLUE}Moved {vcd_file} to {tc_config_dir}{Colors.NC}")
+            
             self.results.append(f"{tc_name},{value},0,0,0,0,0,0,0,0,0,0,0,0.0,TIMEOUT")
             self.create_tc_result(tc_config_dir, tc_name, value, "TIMEOUT", 30)
             return False

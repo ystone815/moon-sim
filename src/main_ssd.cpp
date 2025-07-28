@@ -5,6 +5,7 @@
 #include "packet/pcie_packet.h"
 #include "base/pcie_delay_line.h"
 #include "base/profiler_latency.h"
+#include "base/custom_fifo.h"
 #include "common/common_utils.h"
 #include "common/json_config.h"
 #include <memory>
@@ -79,10 +80,18 @@ int sc_main(int argc, char* argv[]) {
     // Extract simulation configuration
     std::cout << "DEBUG: Extracting simulation configuration..." << std::endl;
     std::cout.flush();
-    bool ssd_debug = sim_config.get_bool("simulation.ssd_debug_enable", false);
-    double simulation_time_sec = sim_config.get_double("simulation.simulation_time_sec", 0.1);
-    bool enable_finite_simulation = sim_config.get_bool("simulation.enable_finite_simulation", true);
+    bool ssd_debug = sim_config.get_bool("ssd_debug_enable", false);
+    double simulation_time_sec = sim_config.get_double("simulation_time_sec", 0.1);
+    bool enable_finite_simulation = sim_config.get_bool("enable_finite_simulation", true);
+    
+    // Extract dump configuration
+    bool dump_interface = sim_config.get_bool("interface", false);
+    bool dump_resource = sim_config.get_bool("resource", false);
+    bool dump_internal = sim_config.get_bool("internal", false);
+    std::string vcd_file = sim_config.get_string("vcd_file", "ssd_traces");
+    
     std::cout << "DEBUG: Simulation configuration extracted - time: " << simulation_time_sec << "s, finite: " << enable_finite_simulation << std::endl;
+    std::cout << "DEBUG: VCD dump - interface: " << dump_interface << ", resource: " << dump_resource << ", internal: " << dump_internal << std::endl;
     std::cout.flush();
     // Note: Latency profiling capability moved to HostSystem's embedded profiler
     
@@ -160,11 +169,11 @@ int sc_main(int argc, char* argv[]) {
 
     // ================== Connection Setup ==================
     
-    // Create FIFOs for component interconnection
-    sc_fifo<std::shared_ptr<BasePacket>> host_to_pcie_downstream("host_to_pcie_downstream", 32);
-    sc_fifo<std::shared_ptr<BasePacket>> pcie_downstream_to_ssd("pcie_downstream_to_ssd", 32);
-    sc_fifo<std::shared_ptr<BasePacket>> ssd_to_pcie_upstream("ssd_to_pcie_upstream", 32);
-    sc_fifo<std::shared_ptr<BasePacket>> pcie_upstream_to_host("pcie_upstream_to_host", 32);
+    // Create CustomFIFOs for component interconnection with VCD tracing
+    CustomFifo<std::shared_ptr<BasePacket>> host_to_pcie_downstream("host_to_pcie_downstream", 32, dump_interface, dump_resource, dump_internal);
+    CustomFifo<std::shared_ptr<BasePacket>> pcie_downstream_to_ssd("pcie_downstream_to_ssd", 32, dump_interface, dump_resource, dump_internal);
+    CustomFifo<std::shared_ptr<BasePacket>> ssd_to_pcie_upstream("ssd_to_pcie_upstream", 32, dump_interface, dump_resource, dump_internal);
+    CustomFifo<std::shared_ptr<BasePacket>> pcie_upstream_to_host("pcie_upstream_to_host", 32, dump_interface, dump_resource, dump_internal);
     
     // Use HostSystem's embedded profiler instead of separate latency monitor
     // Note: HostSystem already has built-in ProfilerBW and can support latency profiling
@@ -173,16 +182,16 @@ int sc_main(int argc, char* argv[]) {
     
     // Simplified PCIe-style bidirectional connections:
     // Downstream path: HostSystem -> PCIe Downstream -> SSD
-    host_system.out(host_to_pcie_downstream);
-    pcie_downstream.in(host_to_pcie_downstream);
-    pcie_downstream.out(pcie_downstream_to_ssd);
-    ssd_top.pcie_in(pcie_downstream_to_ssd);
+    host_system.out(host_to_pcie_downstream.get_fifo());
+    pcie_downstream.in(host_to_pcie_downstream.get_fifo());
+    pcie_downstream.out(pcie_downstream_to_ssd.get_fifo());
+    ssd_top.pcie_in(pcie_downstream_to_ssd.get_fifo());
     
     // Upstream path: SSD -> PCIe Upstream -> HostSystem  
-    ssd_top.pcie_out(ssd_to_pcie_upstream);
-    pcie_upstream.in(ssd_to_pcie_upstream);
-    pcie_upstream.out(pcie_upstream_to_host);
-    host_system.release_in(pcie_upstream_to_host);
+    ssd_top.pcie_out(ssd_to_pcie_upstream.get_fifo());
+    pcie_upstream.in(ssd_to_pcie_upstream.get_fifo());
+    pcie_upstream.out(pcie_upstream_to_host.get_fifo());
+    host_system.release_in(pcie_upstream_to_host.get_fifo());
 
     // ================== Simulation Execution ==================
     
@@ -375,6 +384,9 @@ int sc_main(int argc, char* argv[]) {
             performance_json.close();
         }
     }
+    
+    // Finalize VCD files
+    CustomFifo<std::shared_ptr<BasePacket>>::finalize_vcd();
     
     // Restore cout to its original streambuf
     if (log_file.is_open() && cout_sbuf) {

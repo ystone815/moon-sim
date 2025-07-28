@@ -1,0 +1,13 @@
+{
+  "sweep_name": "vcd_dump_performance_test",
+  "description": "Test performance impact of VCD dumping on/off",
+  "base_config": "config/base",
+  "parameter": "interface",
+  "config_file": "simulation_config.json",
+  "start": 0,
+  "end": 1,
+  "step": 1,
+  "expected_points": 2,
+  "version": "1.0",
+  "target": "sim_ssd"
+}

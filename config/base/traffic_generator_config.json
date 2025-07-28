@@ -1,6 +1,6 @@
 {
   "traffic_generator": {
-    "num_transactions": 10000,
+    "num_transactions": 1000000,
     "interval_ns": 1,
     "locality_percentage": 70,
     "write_percentage": 30,

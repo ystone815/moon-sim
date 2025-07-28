@@ -23,6 +23,7 @@
 #include "base/cache_l1.h"
 #include "base/dram_controller.h"
 #include "base/nand_flash.h"
+#include "base/custom_fifo.h"
 
 // Hardware-oriented SSD Top Level Module
 // Architecture: PCIe → SSD Controller → Cache → DRAM Controller → Flash Controller → NAND Flash
@@ -45,17 +46,17 @@ SC_MODULE(SSDTop) {
     FlashController<PacketType>* m_flash_controller;
     std::vector<NANDFlash<4, 1024, 128>*> m_nand_flash_devices;
     
-    // Inter-module communication FIFOs
-    sc_fifo<std::shared_ptr<PacketType>>* m_controller_to_cache;
-    sc_fifo<std::shared_ptr<PacketType>>* m_cache_to_controller;
-    sc_fifo<std::shared_ptr<BasePacket>>* m_cache_to_dram;
-    sc_fifo<std::shared_ptr<BasePacket>>* m_dram_to_cache;
-    sc_fifo<std::shared_ptr<PacketType>>* m_dram_to_flash;
-    sc_fifo<std::shared_ptr<PacketType>>* m_flash_to_dram;
+    // Inter-module communication CustomFIFOs with VCD tracing
+    CustomFifo<std::shared_ptr<PacketType>>* m_controller_to_cache;
+    CustomFifo<std::shared_ptr<PacketType>>* m_cache_to_controller;
+    CustomFifo<std::shared_ptr<BasePacket>>* m_cache_to_dram;
+    CustomFifo<std::shared_ptr<BasePacket>>* m_dram_to_cache;
+    CustomFifo<std::shared_ptr<PacketType>>* m_dram_to_flash;
+    CustomFifo<std::shared_ptr<PacketType>>* m_flash_to_dram;
     
-    // Flash channel FIFOs (multiple channels)
-    std::vector<sc_fifo<std::shared_ptr<FlashPacket>>*> m_flash_channel_out;
-    std::vector<sc_fifo<std::shared_ptr<FlashPacket>>*> m_flash_channel_in;
+    // Flash channel CustomFIFOs (multiple channels)
+    std::vector<CustomFifo<std::shared_ptr<FlashPacket>>*> m_flash_channel_out;
+    std::vector<CustomFifo<std::shared_ptr<FlashPacket>>*> m_flash_channel_in;
     
     // Configuration structures
     struct SSDTopConfig {
@@ -152,15 +153,18 @@ SC_MODULE(SSDTop) {
     void create_interconnect_fifos() {
         uint32_t fifo_depth = m_config.fifo_depth;
         
-        // Create inter-module FIFOs
-        m_controller_to_cache = new sc_fifo<std::shared_ptr<PacketType>>("controller_to_cache", fifo_depth);
-        m_cache_to_controller = new sc_fifo<std::shared_ptr<PacketType>>("cache_to_controller", fifo_depth);
-        m_cache_to_dram = new sc_fifo<std::shared_ptr<BasePacket>>("cache_to_dram", fifo_depth);
-        m_dram_to_cache = new sc_fifo<std::shared_ptr<BasePacket>>("dram_to_cache", fifo_depth);
-        m_dram_to_flash = new sc_fifo<std::shared_ptr<PacketType>>("dram_to_flash", fifo_depth);
-        m_flash_to_dram = new sc_fifo<std::shared_ptr<PacketType>>("flash_to_dram", fifo_depth);
+        // Load JSON config for VCD dumping
+        JsonConfig ssd_config(m_config_file);
         
-        // Create Flash channel FIFOs
+        // Create inter-module CustomFIFOs with VCD tracing
+        m_controller_to_cache = new CustomFifo<std::shared_ptr<PacketType>>("controller_to_cache", fifo_depth, ssd_config);
+        m_cache_to_controller = new CustomFifo<std::shared_ptr<PacketType>>("cache_to_controller", fifo_depth, ssd_config);
+        m_cache_to_dram = new CustomFifo<std::shared_ptr<BasePacket>>("cache_to_dram", fifo_depth, ssd_config);
+        m_dram_to_cache = new CustomFifo<std::shared_ptr<BasePacket>>("dram_to_cache", fifo_depth, ssd_config);
+        m_dram_to_flash = new CustomFifo<std::shared_ptr<PacketType>>("dram_to_flash", fifo_depth, ssd_config);
+        m_flash_to_dram = new CustomFifo<std::shared_ptr<PacketType>>("flash_to_dram", fifo_depth, ssd_config);
+        
+        // Create Flash channel CustomFIFOs
         m_flash_channel_out.resize(m_config.flash_channels);
         m_flash_channel_in.resize(m_config.flash_channels);
         
@@ -168,12 +172,12 @@ SC_MODULE(SSDTop) {
             std::string out_name = std::string("flash_ch") + std::to_string(ch) + "_out";
             std::string in_name = std::string("flash_ch") + std::to_string(ch) + "_in";
             
-            m_flash_channel_out[ch] = new sc_fifo<std::shared_ptr<FlashPacket>>(out_name.c_str(), fifo_depth);
-            m_flash_channel_in[ch] = new sc_fifo<std::shared_ptr<FlashPacket>>(in_name.c_str(), fifo_depth);
+            m_flash_channel_out[ch] = new CustomFifo<std::shared_ptr<FlashPacket>>(out_name.c_str(), fifo_depth, ssd_config);
+            m_flash_channel_in[ch] = new CustomFifo<std::shared_ptr<FlashPacket>>(in_name.c_str(), fifo_depth, ssd_config);
         }
         
         if (m_debug_enable) {
-            std::cout << "0 s | " << basename() << ": Created interconnect FIFOs (depth=" 
+            std::cout << "0 s | " << basename() << ": Created interconnect CustomFIFOs with VCD tracing (depth=" 
                       << fifo_depth << ")" << std::endl;
         }
     }
@@ -185,30 +189,30 @@ SC_MODULE(SSDTop) {
         m_ssd_controller->pcie_out(pcie_out);
         
         // Connect SSD Controller to Cache
-        m_ssd_controller->storage_out(*m_controller_to_cache);
-        m_ssd_controller->storage_in(*m_cache_to_controller);
+        m_ssd_controller->storage_out(m_controller_to_cache->get_fifo());
+        m_ssd_controller->storage_in(m_cache_to_controller->get_fifo());
         
         // Connect Cache L1 ports
-        m_cache_l1->cpu_in(*m_controller_to_cache);
-        m_cache_l1->cpu_out(*m_cache_to_controller);
-        m_cache_l1->mem_out(*m_cache_to_dram);
-        m_cache_l1->mem_in(*m_dram_to_cache);
+        m_cache_l1->cpu_in(m_controller_to_cache->get_fifo());
+        m_cache_l1->cpu_out(m_cache_to_controller->get_fifo());
+        m_cache_l1->mem_out(m_cache_to_dram->get_fifo());
+        m_cache_l1->mem_in(m_dram_to_cache->get_fifo());
         
         // Connect DRAM Controller with basic ports
-        m_dram_controller->mem_in(*m_cache_to_dram);
-        m_dram_controller->mem_out(*m_dram_to_cache);
+        m_dram_controller->mem_in(m_cache_to_dram->get_fifo());
+        m_dram_controller->mem_out(m_dram_to_cache->get_fifo());
         
         // Connect Flash Controller
-        m_flash_controller->dram_in(*m_dram_to_flash);
-        m_flash_controller->dram_out(*m_flash_to_dram);
+        m_flash_controller->dram_in(m_dram_to_flash->get_fifo());
+        m_flash_controller->dram_out(m_flash_to_dram->get_fifo());
         
         // Connect only the first Flash device to avoid complexity
         if (m_config.flash_channels > 0) {
-            m_flash_controller->flash_out[0]->bind(*m_flash_channel_out[0]);
-            m_flash_controller->flash_in[0]->bind(*m_flash_channel_in[0]);
+            m_flash_controller->flash_out[0]->bind(m_flash_channel_out[0]->get_fifo());
+            m_flash_controller->flash_in[0]->bind(m_flash_channel_in[0]->get_fifo());
             
-            m_nand_flash_devices[0]->in(*m_flash_channel_out[0]);
-            m_nand_flash_devices[0]->release_out(*m_flash_channel_in[0]);
+            m_nand_flash_devices[0]->in(m_flash_channel_out[0]->get_fifo());
+            m_nand_flash_devices[0]->release_out(m_flash_channel_in[0]->get_fifo());
         }
         
         if (m_debug_enable) {
@@ -237,7 +241,7 @@ SC_MODULE(SSDTop) {
             
             // Wait for cache data to be ready  
             if (m_controller_to_cache->num_available() == 0) {
-                wait(m_controller_to_cache->data_written_event());
+                wait(m_controller_to_cache->get_fifo().data_written_event());
             }
         }
     }

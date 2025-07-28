@@ -14,16 +14,12 @@ WEB_EXE=web_test
 OBJ_DIR=obj
 
 # Define source files in their new locations
-SRCS_MAIN = src/main.cpp
 SRCS_BASE = src/base/traffic_generator.cpp
 SRCS_HOST_SYSTEM = src/host_system/host_system.cpp
 
 # Define object files based on source files and their new locations
-OBJS_MAIN = $(patsubst src/%.cpp, $(OBJ_DIR)/%.o, $(SRCS_MAIN))
 OBJS_BASE = $(patsubst src/base/%.cpp, $(OBJ_DIR)/base/%.o, $(SRCS_BASE))
 OBJS_HOST_SYSTEM = $(patsubst src/host_system/%.cpp, $(OBJ_DIR)/host_system/%.o, $(SRCS_HOST_SYSTEM))
-
-OBJS = $(OBJS_MAIN) $(OBJS_BASE) $(OBJS_HOST_SYSTEM)
 
 # SSD simulation specific files
 SRCS_SSD = src/main_ssd.cpp
@@ -35,21 +31,13 @@ SRCS_CACHE = src/main_cache_test.cpp
 OBJS_CACHE = $(patsubst src/%.cpp, $(OBJ_DIR)/%.o, $(SRCS_CACHE))
 OBJS_CACHE_TOTAL = $(OBJS_CACHE) $(OBJS_BASE) $(OBJS_HOST_SYSTEM)
 
-# Web test specific files
-SRCS_WEB = src/main_web_test.cpp
-OBJS_WEB = $(patsubst src/%.cpp, $(OBJ_DIR)/%.o, $(SRCS_WEB))
-OBJS_WEB_TOTAL = $(OBJS_WEB) $(OBJS_BASE) $(OBJS_HOST_SYSTEM)
+# Web test files removed
 
-all: $(EXE)
+all: $(SSD_EXE)
 
 ssd: $(SSD_EXE)
 
 cache_test: $(CACHE_EXE)
-
-web_test: $(WEB_EXE)
-
-$(EXE): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
 
 $(SSD_EXE): $(OBJS_SSD_TOTAL)
 	$(CXX) $(CXXFLAGS) -o $@ $^
@@ -77,5 +65,5 @@ $(OBJ_DIR)/host_system/%.o: src/host_system/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(EXE) $(SSD_EXE) $(CACHE_EXE) $(WEB_EXE) $(OBJS) $(OBJS_SSD) $(OBJS_CACHE) $(OBJS_WEB)
+	rm -f $(SSD_EXE) $(CACHE_EXE) $(OBJS_SSD_TOTAL) $(OBJS_CACHE_TOTAL)
 	rm -rf $(OBJ_DIR)
