@@ -297,6 +297,7 @@ struct PCIePacket : public BasePacket {
     }
     
     void sc_trace_impl(sc_trace_file* tf, const std::string& name) const override {
+        // Trace PCIe-specific fields
         int gen_value = static_cast<int>(generation);
         sc_trace(tf, gen_value, name + ".generation");
         sc_trace(tf, lanes, name + ".lanes");
@@ -304,6 +305,11 @@ struct PCIePacket : public BasePacket {
         sc_trace(tf, tlp_header.address, name + ".address");
         sc_trace(tf, total_packet_size, name + ".total_size");
         sc_trace(tf, retry_count, name + ".retry_count");
+        
+        // Also trace original BasePacket fields if available
+        if (original_packet) {
+            original_packet->sc_trace_impl(tf, name + ".original");
+        }
     }
     
     // Implementation of memory operation methods (for compatibility)

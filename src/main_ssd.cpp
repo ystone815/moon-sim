@@ -170,6 +170,12 @@ int sc_main(int argc, char* argv[]) {
     // ================== Connection Setup ==================
     
     // Create CustomFIFOs for component interconnection with VCD tracing
+    // Initialize VCD tracing with proper filename
+    if (dump_interface || dump_resource || dump_internal) {
+        VcdManager::initialize(vcd_file);
+        std::cout << "DEBUG: VCD Manager initialized with file: " << vcd_file << std::endl;
+    }
+    
     CustomFifo<std::shared_ptr<BasePacket>> host_to_pcie_downstream("host_to_pcie_downstream", 32, dump_interface, dump_resource, dump_internal);
     CustomFifo<std::shared_ptr<BasePacket>> pcie_downstream_to_ssd("pcie_downstream_to_ssd", 32, dump_interface, dump_resource, dump_internal);
     CustomFifo<std::shared_ptr<BasePacket>> ssd_to_pcie_upstream("ssd_to_pcie_upstream", 32, dump_interface, dump_resource, dump_internal);
