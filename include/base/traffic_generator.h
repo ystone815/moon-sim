@@ -48,6 +48,7 @@ SC_MODULE(TrafficGenerator) {
     const unsigned int m_start_address;
     const unsigned int m_end_address;
     const unsigned int m_address_increment;
+    const unsigned int m_max_outstanding;    // Maximum outstanding transactions (0 = unlimited)
     
     // Advanced traffic pattern configuration
     const TrafficPattern m_traffic_pattern;
@@ -77,6 +78,17 @@ SC_MODULE(TrafficGenerator) {
     // Method to notify completion of a transaction
     void notify_completion() {
         m_transactions_completed++;
+        if (m_outstanding_count > 0) {
+            m_outstanding_count--;
+        }
+        m_completion_event.notify(); // Wake up generator if waiting
+    }
+    
+    // Outstanding transaction getters
+    unsigned int get_outstanding_count() const { return m_outstanding_count; }
+    unsigned int get_max_outstanding() const { return m_max_outstanding; }
+    bool has_outstanding_capacity() const { 
+        return (m_max_outstanding == 0) || (m_outstanding_count < m_max_outstanding); 
     }
 
     // Updated constructor with new parameter
@@ -94,6 +106,10 @@ private:
     // Statistics tracking
     mutable unsigned int m_transactions_sent;      // Transactions sent to the system
     mutable unsigned int m_transactions_completed; // Transactions completed (received back)
+    mutable unsigned int m_outstanding_count;      // Current outstanding transactions
+    
+    // Outstanding transaction flow control
+    sc_event m_completion_event;                   // Event for completion notifications
     
     std::mt19937 m_random_generator; // Random number generator
     std::uniform_int_distribution<int> m_address_dist; // Address distribution

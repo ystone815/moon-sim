@@ -4,7 +4,7 @@
 #include <cmath>
 
 TrafficGenerator::TrafficGenerator(sc_module_name name, sc_time interval, unsigned int locality_percentage, unsigned int write_percentage, unsigned char databyte_value, unsigned int num_transactions, bool debug_enable, unsigned int start_address, unsigned int end_address, unsigned int address_increment)
-    : sc_module(name), m_interval(interval), m_locality_percentage(locality_percentage), m_write_percentage(write_percentage), m_databyte_value(databyte_value), m_num_transactions(num_transactions), m_debug_enable(debug_enable), m_start_address(start_address), m_end_address(end_address), m_address_increment(address_increment),
+    : sc_module(name), m_interval(interval), m_locality_percentage(locality_percentage), m_write_percentage(write_percentage), m_databyte_value(databyte_value), m_num_transactions(num_transactions), m_debug_enable(debug_enable), m_start_address(start_address), m_end_address(end_address), m_address_increment(address_increment), m_max_outstanding(0),
       // Default to CONSTANT pattern and CUSTOM template
       m_traffic_pattern(TrafficPattern::CONSTANT), m_workload_template(WorkloadTemplate::CUSTOM),
       m_burst_size(10), m_burst_interval(sc_time(10, SC_NS)), m_idle_time(sc_time(1000, SC_NS)),
@@ -12,6 +12,7 @@ TrafficGenerator::TrafficGenerator(sc_module_name name, sc_time interval, unsign
       m_current_address(start_address),
       m_transactions_sent(0),
       m_transactions_completed(0),
+      m_outstanding_count(0),
       m_random_generator(std::random_device{}()),
       m_address_dist(start_address, end_address),
       m_data_dist(0, 0xFFF),
@@ -56,6 +57,7 @@ TrafficGenerator::TrafficGenerator(sc_module_name name, const JsonConfig& config
       m_start_address(config.get_int("start_address", 0)),
       m_end_address(config.get_int("end_address", 0xFF)),
       m_address_increment(config.get_int("address_increment", 0x10)),
+      m_max_outstanding(config.get_int("max_outstanding", 0)),
       // Advanced pattern configuration
       m_traffic_pattern(parse_traffic_pattern(config.get_string("traffic_pattern", "CONSTANT"))),
       m_workload_template(parse_workload_template(config.get_string("workload_template", "CUSTOM"))),
@@ -68,6 +70,7 @@ TrafficGenerator::TrafficGenerator(sc_module_name name, const JsonConfig& config
       m_current_address(m_start_address),
       m_transactions_sent(0),
       m_transactions_completed(0),
+      m_outstanding_count(0),
       m_random_generator(std::random_device{}()),
       m_address_dist(m_start_address, m_end_address),
       m_data_dist(0, 0xFFF),
@@ -235,13 +238,29 @@ std::shared_ptr<GenericPacket> TrafficGenerator::generate_packet() {
 
 void TrafficGenerator::run_constant_pattern() {
     for (int i = 0; i < m_num_transactions; ++i) {
+        // Wait for outstanding capacity if limited
+        while (!has_outstanding_capacity()) {
+            if (m_debug_enable) {
+                std::cout << sc_time_stamp() << " | TrafficGenerator: Waiting for outstanding capacity (" 
+                          << m_outstanding_count << "/" << m_max_outstanding << ")" << std::endl;
+            }
+            wait(m_completion_event);
+        }
+        
         auto p = generate_packet();
         out.write(p);
         m_transactions_sent++;
+        if (m_max_outstanding > 0) {
+            m_outstanding_count++;
+        }
         
         if (m_debug_enable) {
             print_packet_log(std::cout, "TrafficGenerator", *p, 
                             (p->command == Command::WRITE) ? "Sent WRITE" : "Sent READ");
+            if (m_max_outstanding > 0) {
+                std::cout << sc_time_stamp() << " | TrafficGenerator: Outstanding count: " 
+                          << m_outstanding_count << "/" << m_max_outstanding << std::endl;
+            }
         }
         
         wait(m_interval);
@@ -260,13 +279,29 @@ void TrafficGenerator::run_burst_pattern() {
         }
         
         for (int i = 0; i < burst_count; ++i) {
+            // Wait for outstanding capacity if limited
+            while (!has_outstanding_capacity()) {
+                if (m_debug_enable) {
+                    std::cout << sc_time_stamp() << " | TrafficGenerator: Waiting for outstanding capacity (" 
+                              << m_outstanding_count << "/" << m_max_outstanding << ")" << std::endl;
+                }
+                wait(m_completion_event);
+            }
+            
             auto p = generate_packet();
             out.write(p);
             m_transactions_sent++;
+            if (m_max_outstanding > 0) {
+                m_outstanding_count++;
+            }
             
             if (m_debug_enable) {
                 print_packet_log(std::cout, "TrafficGenerator", *p, 
                                 (p->command == Command::WRITE) ? "Sent WRITE (burst)" : "Sent READ (burst)");
+                if (m_max_outstanding > 0) {
+                    std::cout << sc_time_stamp() << " | TrafficGenerator: Outstanding count: " 
+                              << m_outstanding_count << "/" << m_max_outstanding << std::endl;
+                }
             }
             
             if (i < burst_count - 1) { // Don't wait after the last packet in burst
@@ -287,13 +322,29 @@ void TrafficGenerator::run_burst_pattern() {
 
 void TrafficGenerator::run_stochastic_pattern() {
     for (int i = 0; i < m_num_transactions; ++i) {
+        // Wait for outstanding capacity if limited
+        while (!has_outstanding_capacity()) {
+            if (m_debug_enable) {
+                std::cout << sc_time_stamp() << " | TrafficGenerator: Waiting for outstanding capacity (" 
+                          << m_outstanding_count << "/" << m_max_outstanding << ")" << std::endl;
+            }
+            wait(m_completion_event);
+        }
+        
         auto p = generate_packet();
         out.write(p);
         m_transactions_sent++;
+        if (m_max_outstanding > 0) {
+            m_outstanding_count++;
+        }
         
         if (m_debug_enable) {
             print_packet_log(std::cout, "TrafficGenerator", *p, 
-                            (p->command == Command::WRITE) ? "Sent WRITE (stochastic)" : "Sent READ (stochastic)");
+                            (p->command == Command::WRITE) ? "Sent WRITE (stochastic)" : "Sent read (stochastic)");
+            if (m_max_outstanding > 0) {
+                std::cout << sc_time_stamp() << " | TrafficGenerator: Outstanding count: " 
+                          << m_outstanding_count << "/" << m_max_outstanding << std::endl;
+            }
         }
         
         sc_time next_interval = generate_next_interval();

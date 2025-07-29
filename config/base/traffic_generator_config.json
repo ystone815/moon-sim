@@ -1,6 +1,6 @@
 {
   "traffic_generator": {
-    "num_transactions": 1000000,
+    "num_transactions": 1000,
     "interval_ns": 1,
     "locality_percentage": 70,
     "write_percentage": 30,
@@ -9,7 +9,9 @@
     "start_address": 0,
     "end_address": 65535,
     "address_increment": 64,
+    "max_outstanding": 10,
     
+    "_comment_outstanding": "Outstanding transaction limit (0 = unlimited)",
     "_comment_advanced": "Cache Test Configuration - Mixed workload",
     "traffic_pattern": "CONSTANT",
     "workload_template": "CUSTOM",
