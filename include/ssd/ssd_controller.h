@@ -76,6 +76,9 @@ SC_MODULE(SSDController) {
     const std::string m_config_file;
     SSDControllerConfig m_config;
     
+    // PCIe Command Buffer (prevents PCIe blocking)
+    sc_fifo<std::shared_ptr<PacketType>> m_pcie_command_buffer;
+    
     // Command tracking
     std::queue<std::shared_ptr<SSDCommand>> m_command_queue;
     std::unordered_map<uint32_t, std::shared_ptr<SSDCommand>> m_active_commands;
@@ -92,18 +95,28 @@ SC_MODULE(SSDController) {
     double m_total_latency_ns;
     uint64_t m_queue_full_count;
     
-    // Main controller processes
-    void command_submission_process() {
+    // PCIe command reception process (event-driven)
+    void pcie_reception_process() {
         while (true) {
-            // Wait for command from PCIe interface
+            // Receive commands from PCIe and buffer them
             auto packet = pcie_in.read();
             
-            if (!packet) {
+            if (packet) {
+                // Write to command buffer - blocks if buffer is full (natural backpressure)
+                m_pcie_command_buffer.write(packet);
+                
                 if (m_debug_enable) {
-                    std::cout << sc_time_stamp() << " | SSDController: Received null packet" << std::endl;
+                    std::cout << sc_time_stamp() << " | SSDController: PCIe command buffered" << std::endl;
                 }
-                continue;
             }
+        }
+    }
+    
+    // Command processing process (processes buffered commands)
+    void command_submission_process() {
+        while (true) {
+            // Read from command buffer - blocks until data is available (event-driven)
+            auto packet = m_pcie_command_buffer.read();
             
             m_total_commands++;
             
@@ -111,7 +124,7 @@ SC_MODULE(SSDController) {
             auto command = std::make_shared<SSDCommand>(packet, m_next_command_id++);
             
             if (m_debug_enable) {
-                std::cout << sc_time_stamp() << " | SSDController: Received command ID " 
+                std::cout << sc_time_stamp() << " | SSDController: Processing command ID " 
                           << command->command_id << ", LBA 0x" << std::hex << command->lba 
                           << std::dec << ", Size " << command->transfer_size << " bytes" << std::endl;
             }
@@ -122,8 +135,7 @@ SC_MODULE(SSDController) {
                 if (m_debug_enable) {
                     std::cout << sc_time_stamp() << " | SSDController: Command queue full, waiting..." << std::endl;
                 }
-                // In real hardware, this would cause backpressure to host
-                // For simulation, we'll wait until space is available
+                // Wait until space is available in command queue
                 while (m_command_queue.size() >= m_config.command_queue_depth) {
                     wait(10, SC_NS); // Small delay to prevent busy waiting
                 }
@@ -289,6 +301,7 @@ SC_MODULE(SSDController) {
         : sc_module(name),
           m_debug_enable(debug_enable),
           m_config_file(config_file),
+          m_pcie_command_buffer("pcie_cmd_buffer", 64), // PCIe command buffer (larger than command queue)
           m_next_command_id(1),
           m_total_commands(0),
           m_completed_commands(0),
@@ -303,11 +316,13 @@ SC_MODULE(SSDController) {
         if (m_debug_enable) {
             std::cout << "0 s | " << basename() << ": MOON-SIM SSD Controller initialized"
                       << " (Type: " << m_config.controller_type
-                      << ", Queue Depth: " << m_config.command_queue_depth << ")" << std::endl;
+                      << ", Queue Depth: " << m_config.command_queue_depth
+                      << ", PCIe Buffer: 64)" << std::endl;
         }
         
         // Start controller processes
-        SC_THREAD(command_submission_process);
+        SC_THREAD(pcie_reception_process);      // New: Fast PCIe reception
+        SC_THREAD(command_submission_process);  // Modified: Process buffered commands
         SC_THREAD(command_dispatch_process);
         SC_THREAD(completion_handling_process);
     }
@@ -319,6 +334,7 @@ public:
     uint64_t get_error_commands() const { return m_error_commands; }
     uint64_t get_active_commands() const { return m_active_commands.size(); }
     uint64_t get_queued_commands() const { return m_command_queue.size(); }
+    uint64_t get_buffered_commands() const { return m_pcie_command_buffer.num_available(); }
     uint64_t get_total_bytes_transferred() const { return m_total_bytes_transferred; }
     uint64_t get_queue_full_count() const { return m_queue_full_count; }
     
@@ -341,6 +357,7 @@ public:
         std::cout << "Error Commands: " << m_error_commands << std::endl;
         std::cout << "Active Commands: " << m_active_commands.size() << std::endl;
         std::cout << "Queued Commands: " << m_command_queue.size() << std::endl;
+        std::cout << "Buffered Commands (PCIe): " << m_pcie_command_buffer.num_available() << std::endl;
         std::cout << "Total Bytes Transferred: " << m_total_bytes_transferred << std::endl;
         std::cout << "Queue Full Events: " << m_queue_full_count << std::endl;
         std::cout << "Average Latency: " << std::fixed << std::setprecision(1) 

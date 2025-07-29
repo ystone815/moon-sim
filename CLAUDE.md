@@ -145,12 +145,18 @@ MOON-SIM implements a high-performance SystemC-based SoC architecture simulation
 - **error_handling.h**: Centralized error codes and reporting
 - Consistent timestamped logging with performance control
 
-### SystemC Dependencies
+### SystemC Dependencies & Best Practices
 
 - Requires SystemC 2.3.4+ installation at `/usr/local/systemc`
 - Uses SystemC processes, modules, and timing mechanisms
 - Simulation logs automatically timestamped and saved to `log/` directory
 - Template-based design follows SystemC best practices
+
+#### SystemC Performance Rules (MANDATORY)
+1. **FIFO Operations**: Always use blocking `read()`/`write()` - never `nb_read()`/`nb_write()` + polling
+2. **Process Synchronization**: Use SystemC's built-in event mechanisms, not artificial delays
+3. **Real-time Delays**: Only use `wait(time)` for actual hardware timing simulation (>100ns)
+4. **Flow Control**: Implement backpressure through natural blocking, not packet dropping
 
 ### File Organization
 
@@ -339,22 +345,41 @@ Always follow these modular design principles when developing or modifying the S
 
 #### 0. **Event-Driven Communication (CRITICAL)**
 - **NEVER use polling loops**: Avoid `while(condition) { wait(1, SC_NS); }` patterns
-- **Use sc_event for process communication**: All inter-process communication must be event-driven
-- **Notify events when data is available**: Use `event.notify()` to wake up waiting processes
+- **NEVER use artificial delays**: `wait(1, SC_NS)`, `wait(10, SC_NS)` etc. are STRICTLY FORBIDDEN
+- **Use SystemC FIFO built-in events**: Leverage `sc_fifo::read()` and `sc_fifo::write()` automatic blocking
 - **Wait on events, not time**: Use `wait(event)` instead of `wait(time)` for synchronization
-- **Performance Impact**: Polling loops can reduce simulation performance by 100x or more
+- **Performance Impact**: Polling loops and artificial delays can reduce simulation performance by 100x or more
+- **Proper FIFO Usage**: SystemC FIFOs have built-in event mechanisms - use them!
 
 ```cpp
-// ❌ NEVER DO THIS - Inefficient polling
+// ❌ NEVER DO THIS - Inefficient polling with artificial delay
 while (queue.empty()) {
-    wait(1, SC_NS);  // Kills performance!
+    wait(1, SC_NS);  // ABSOLUTELY FORBIDDEN!
 }
 
-// ✅ ALWAYS DO THIS - Event-driven
+// ❌ NEVER DO THIS - Artificial delays
+if (buffer.nb_write(data)) {
+    // success
+} else {
+    // buffer full, wait artificially
+    wait(10, SC_NS);  // WRONG! This kills performance
+}
+
+// ✅ ALWAYS DO THIS - Use SystemC FIFO built-in blocking
+auto data = input_fifo.read();     // Blocks until data available
+output_fifo.write(result);         // Blocks if buffer full
+
+// ✅ ALWAYS DO THIS - Event-driven with sc_event
 sc_event data_ready;
 // Producer: data_ready.notify();
 // Consumer: wait(data_ready);
 ```
+
+**STRICT RULES:**
+1. **NO `wait(X, SC_NS)` where X < 100ns** - These are almost always wrong
+2. **NO manual FIFO state checking** - Don't use `num_available()` + `wait()` patterns  
+3. **USE blocking FIFO operations** - `read()` and `write()` handle events automatically
+4. **NO packet dropping for flow control** - Use natural backpressure instead
 
 #### 1. **Avoid Duplication**
 - Never create redundant components that replicate existing functionality
