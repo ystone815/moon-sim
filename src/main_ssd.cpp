@@ -8,6 +8,7 @@
 #include "base/custom_fifo.h"
 #include "common/common_utils.h"
 #include "common/json_config.h"
+#include "common/vcd_helper.h"
 #include <memory>
 #include <fstream>
 #include <sstream>
@@ -169,35 +170,37 @@ int sc_main(int argc, char* argv[]) {
 
     // ================== Connection Setup ==================
     
-    // Create CustomFIFOs for component interconnection with VCD tracing
-    // Initialize VCD tracing with proper filename
+    // Initialize VCD tracing BEFORE creating CustomFIFOs
     if (dump_interface || dump_resource || dump_internal) {
-        VcdManager::initialize(vcd_file);
+        VcdTraceManager::initialize(vcd_file);
         std::cout << "DEBUG: VCD Manager initialized with file: " << vcd_file << std::endl;
+        std::cout << "DEBUG: Dump options - interface: " << dump_interface << ", resource: " << dump_resource << ", internal: " << dump_internal << std::endl;
     }
     
-    CustomFifo<std::shared_ptr<BasePacket>> host_to_pcie_downstream("host_to_pcie_downstream", 32, dump_interface, dump_resource, dump_internal);
-    CustomFifo<std::shared_ptr<BasePacket>> pcie_downstream_to_ssd("pcie_downstream_to_ssd", 32, dump_interface, dump_resource, dump_internal);
-    CustomFifo<std::shared_ptr<BasePacket>> ssd_to_pcie_upstream("ssd_to_pcie_upstream", 32, dump_interface, dump_resource, dump_internal);
-    CustomFifo<std::shared_ptr<BasePacket>> pcie_upstream_to_host("pcie_upstream_to_host", 32, dump_interface, dump_resource, dump_internal);
+    // Create CustomFIFOs for component interconnection with VCD tracing
+    // dump_in: trace packets entering FIFO, dump_out: trace packets leaving FIFO
+    CustomFifo<std::shared_ptr<BasePacket>> host_to_pcie_downstream("host_to_pcie_downstream", 32, dump_interface, dump_interface);
+    CustomFifo<std::shared_ptr<BasePacket>> pcie_downstream_to_ssd("pcie_downstream_to_ssd", 32, dump_interface, dump_interface);
+    CustomFifo<std::shared_ptr<BasePacket>> ssd_to_pcie_upstream("ssd_to_pcie_upstream", 32, dump_interface, dump_interface);
+    CustomFifo<std::shared_ptr<BasePacket>> pcie_upstream_to_host("pcie_upstream_to_host", 32, dump_interface, dump_interface);
     
     // Use HostSystem's embedded profiler instead of separate latency monitor
     // Note: HostSystem already has built-in ProfilerBW and can support latency profiling
 
     // ================== Component Connections ==================
     
-    // Simplified PCIe-style bidirectional connections:
+    // Simplified PCIe-style bidirectional connections using CustomFIFO directly:
     // Downstream path: HostSystem -> PCIe Downstream -> SSD
-    host_system.out(host_to_pcie_downstream.get_fifo());
-    pcie_downstream.in(host_to_pcie_downstream.get_fifo());
-    pcie_downstream.out(pcie_downstream_to_ssd.get_fifo());
-    ssd_top.pcie_in(pcie_downstream_to_ssd.get_fifo());
+    host_system.out(host_to_pcie_downstream);
+    pcie_downstream.in(host_to_pcie_downstream);
+    pcie_downstream.out(pcie_downstream_to_ssd);
+    ssd_top.pcie_in(pcie_downstream_to_ssd);
     
     // Upstream path: SSD -> PCIe Upstream -> HostSystem  
-    ssd_top.pcie_out(ssd_to_pcie_upstream.get_fifo());
-    pcie_upstream.in(ssd_to_pcie_upstream.get_fifo());
-    pcie_upstream.out(pcie_upstream_to_host.get_fifo());
-    host_system.release_in(pcie_upstream_to_host.get_fifo());
+    ssd_top.pcie_out(ssd_to_pcie_upstream);
+    pcie_upstream.in(ssd_to_pcie_upstream);
+    pcie_upstream.out(pcie_upstream_to_host);
+    host_system.release_in(pcie_upstream_to_host);
 
     // ================== Simulation Execution ==================
     
